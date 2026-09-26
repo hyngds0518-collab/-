@@ -70,6 +70,16 @@
   function days(a, b) { return Math.round((toDate(b) - toDate(a)) / 86400000); }
   function pct(a, b) { return b ? Math.round(a / b * 1000) / 10 : 0; }
 
+  // 장소 → 건물 / 층 / 공간 / 원격 연결
+  function parseSite(place) {
+    var main = String(place || '').split('+')[0].trim(), remote = (String(place).split('+')[1] || '').trim();
+    var m = main.match(/^(.+?)\s+(B?\d+)F\s+(.+)$/);
+    var site = m ? { building: m[1], floor: m[2], room: m[3] } : { building: main.replace(/\s*(회의실|사무실)$/, '') || '기타', floor: '', room: (main.match(/(회의실|사무실)$/) || ['회의실'])[0] };
+    site.key = site.building + (site.floor ? ' ' + site.floor + 'F' : '') + ' · ' + site.room;
+    site.remote = remote;
+    return site;
+  }
+
   function classifyTypes(raw) {
     var t = TYPE_RULES.filter(function (r) { return r[1].test(raw); }).map(function (r) { return r[0]; });
     return t.length ? t : ['의사결정'];
@@ -175,6 +185,7 @@
       m.building = (m.place.match(/^(본사|푸드앤코|[^ ]+)/) || [''])[0];
       m.room = m.place.replace(/\s*\+.*$/, '');
       m.hybrid = /화상|\+/.test(m.place);
+      m.site = parseSite(m.place);
     });
 
     // --- 액션: 후속 회의에서 최종 상태 추적
@@ -446,7 +457,7 @@
   }
 
   var api = {
-    analyze: analyze, autoMetrics: autoMetrics, topicScores: topicScores, NATURES: NATURES, TYPES: TYPES, PHASES: PHASES, TOPICS: TOPICS.map(function (t) { return t.key; }),
+    analyze: analyze, parseSite: parseSite, autoMetrics: autoMetrics, topicScores: topicScores, NATURES: NATURES, TYPES: TYPES, PHASES: PHASES, TOPICS: TOPICS.map(function (t) { return t.key; }),
     DEPTS: DEPTS, DEPT_SHORT: DEPT_SHORT, classifyTypes: classifyTypes, classifyPhase: classifyPhase, evalBucket: evalBucket,
     decisionBucket: decisionBucket, parseActionFollowups: parseActionFollowups
   };

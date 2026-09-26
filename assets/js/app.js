@@ -18,7 +18,7 @@
     all: []
   };
   function emptyFilters() {
-    return { from: '', to: '', nature: [], types: [], phases: [], depts: [], people: [], meetings: [], q: '', source: [] };
+    return { from: '', to: '', nature: [], types: [], phases: [], places: [], depts: [], people: [], meetings: [], q: '', source: [] };
   }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function tag(ms, src) { ms.forEach(function (m) { m.source = src; }); return ms; }
@@ -79,6 +79,7 @@
       if (f.nature.length && f.nature.indexOf(m.nature) < 0) return false;
       if (f.types.length && !m.types.some(function (t) { return f.types.indexOf(t) >= 0; })) return false;
       if (f.phases.length && f.phases.indexOf(m.phase) < 0) return false;
+      if (f.places.length && f.places.indexOf(m.site.key) < 0) return false;
       if (f.depts.length && !m.depts.some(function (d) { return f.depts.indexOf(d) >= 0; })) return false;
       if (f.people.length && !m.attendees.some(function (a) { return f.people.indexOf(a.name) >= 0; })) return false;
       if (f.meetings.length && f.meetings.indexOf(m.id) < 0) return false;
@@ -131,6 +132,7 @@
     }).join('') + '</span>';
     h += dd('types', '회의 유형', A.TYPES);
     h += dd('phases', '프로젝트 단계', A.PHASES);
+    h += dd('places', '회의 장소', uniq(all.map(function (m) { return m.site.key; })).sort());
     h += dd('depts', '참석 부서', deptsList);
     h += dd('people', '참석자', people);
     h += dd('meetings', '회의', all.map(function (m) { return m.id; }), function (id) {
@@ -196,7 +198,7 @@
 
   function updateFilterStatus() {
     var n = S.R.meetings.length, t = S.all.length;
-    var active = S.f.from || S.f.to || S.f.q || ['nature', 'types', 'phases', 'depts', 'people', 'meetings', 'source'].some(function (k) { return S.f[k].length; });
+    var active = S.f.from || S.f.to || S.f.q || ['nature', 'types', 'phases', 'places', 'depts', 'people', 'meetings', 'source'].some(function (k) { return S.f[k].length; });
     var selTxt = S.f.meetings.length === 1 && !S.f.nature.length && !S.f.types.length ? '<span class="sel-banner">' + window.Icons.icon('calendar', 13) + esc(S.f.meetings[0]) + ' 선택됨</span>' : '';
     $('#fStatus').innerHTML = selTxt + '<span><b>' + n + '</b> / ' + t + '건</span>' + (active ? '<button type="button" class="link-btn" id="fReset">필터 초기화</button>' : '');
     var r = $('#fReset');

@@ -567,3 +567,73 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   .app { grid-template-columns: 1fr; }
 }
 #minutesPanel { scroll-margin-top: 120px; }
+
+/* ---------- 인포그래픽 부품 ---------- */
+.floorplan { width: 100%; height: auto; display: block; }
+.floorplan .fp-room:hover polygon { filter: brightness(1.04); }
+.floorplan .fp-room:focus { outline: none; }
+.floorplan .fp-room:focus-visible polygon { stroke: var(--accent); stroke-width: 2; }
+.fp-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 11.5px; color: var(--ink-2); padding-top: 10px; margin-top: 6px; border-top: 1px solid var(--border); }
+.fp-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.fp-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; align-items: start; }
+.room-list { display: flex; flex-direction: column; gap: 8px; }
+.room-item { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; cursor: pointer; display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; background: var(--surface); text-align: left; }
+.room-item:hover { border-color: var(--accent); }
+.room-item.on { border-color: var(--accent); background: var(--accent-soft); }
+.room-item .fl { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; font-size: 12px; background: var(--t-blue-bg); color: var(--t-blue); }
+.room-item b { font-size: 13px; display: block; line-height: 1.3; }
+.room-item small { font-size: 11.5px; color: var(--ink-2); }
+.room-item .cnt { font-size: 18px; font-weight: 800; letter-spacing: -.02em; }
+.room-item .mini { display: flex; gap: 2px; margin-top: 4px; }
+.room-item .mini i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+.ring-set { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 12px 8px; justify-items: center; }
+.ring-item { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.ring-item b { font-size: 12.5px; margin-top: 4px; }
+.ring-item small { font-size: 11px; color: var(--ink-2); }
+.ring { display: block; }
+.gauge { display: block; max-width: 260px; margin: 0 auto; }
+.gauge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 14px; }
+.gauge-cell { border: 1px solid var(--border); border-radius: 14px; padding: 12px 12px 10px; text-align: center; cursor: pointer; }
+.gauge-cell:hover { border-color: var(--border-strong); }
+.gauge-cell[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.gauge-cell .gn { font-size: 12.5px; font-weight: 700; color: var(--ink-2); display: flex; justify-content: space-between; gap: 6px; margin-bottom: 2px; text-align: left; }
+.gauge-cell .gf { font-size: 11.5px; color: var(--ink-2); display: flex; justify-content: space-between; margin-top: 2px; }
+.waffle { display: grid; gap: 4px; }
+.waffle i { aspect-ratio: 1; border-radius: 4px; display: grid; place-items: center; min-width: 0; }
+.waffle i span { font-size: 9px; color: #fff; font-style: normal; font-weight: 800; }
+.picto { display: flex; flex-wrap: wrap; gap: 3px; }
+.picto i { width: 20px; height: 26px; fill: currentColor; display: inline-block; }
+.picto svg { fill: currentColor; }
+.steps { display: flex; flex-direction: column; gap: 10px; }
+.step-b { display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: stretch; }
+.step-flag { background: var(--ink); color: var(--page); border-radius: 10px 10px 10px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; clip-path: polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%); padding: 6px 0 14px; }
+.step-flag b { font-size: 22px; line-height: 1; font-weight: 900; }
+.step-flag span { font-size: 9.5px; font-weight: 800; letter-spacing: .06em; opacity: .8; margin-top: 3px; }
+.step-body { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; justify-content: center; }
+.step-body b { font-size: 13px; }
+.step-body small { font-size: 11.5px; color: var(--ink-2); }
+.prog { display: flex; flex-direction: column; gap: 10px; }
+.prog-row { display: grid; grid-template-columns: minmax(44px, 84px) 1fr 44px; gap: 10px; align-items: center; font-size: 12.5px; }
+.prog-row .pk { color: var(--ink-2); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prog-row b { text-align: right; font-variant-numeric: tabular-nums; }
+.prog-row small { grid-column: 2 / 4; font-size: 11px; color: var(--muted); margin-top: -6px; }
+.pbar { height: 10px; border-radius: 5px; background: var(--surface-3); position: relative; overflow: hidden; border: 1px solid var(--border); }
+.pbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; }
+.prog-axis { display: grid; grid-template-columns: minmax(44px, 84px) 1fr 44px; gap: 10px; font-size: 10.5px; color: var(--muted); }
+.prog-axis div { display: flex; justify-content: space-between; }
+.prog-axis em { font-style: normal; }
+.big-num { font-size: 40px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+.big-num small { font-size: 14px; color: var(--ink-2); font-weight: 700; margin-left: 3px; letter-spacing: 0; }
+@media (max-width: 1180px) { .fp-wrap { grid-template-columns: 1fr; } }
+
+.gauge-grid.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 6px; }
+.gauge-grid.compact .gauge-cell { padding: 8px 6px 4px; border-radius: 12px; cursor: default; }
+.gauge-grid.compact .gn { font-size: 11px; }
+.ov-card .ring-set { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+
+.risk-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin-top: 8px; }
+.risk-list > div { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; font-size: 12.5px; }
+.risk-list b { width: 22px; height: 22px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-size: 11px; }
+.risk-list small { display: block; font-size: 11px; color: var(--muted); }
+@media (max-width: 760px) { .risk-list { grid-template-columns: 1fr; } }

@@ -63,6 +63,88 @@
   }
   function pctTxt(v) { return (Math.round(v * 10) / 10) + '%'; }
   function sum(a) { return a.reduce(function (s, v) { return s + v; }, 0); }
+  // 도면: 전체 회의 기준 공간 목록 (필터와 무관하게 건물 형태 유지)
+  function roomsOf(ms) {
+    var rooms = {};
+    ms.forEach(function (m) { var s = m.site; if (!s) return; var r = rooms[s.key] || (rooms[s.key] = { key: s.key, building: s.building, floor: s.floor, room: s.room, list: [], remote: [] }); r.list.push(m); });
+    return rooms;
+  }
+  function floorPlanHTML(R, api, compact) {
+    return window.Info.floorPlan(R.meetings, { tokens: api.tokens(), compact: compact, selected: api.S.f.places, allRooms: roomsOf(R.all) });
+  }
+  function bindRooms(root, api) {
+    api.$$('[data-place]', root).forEach(function (g) {
+      var fn = function (e) { e.stopPropagation(); var k = g.getAttribute('data-place'); var cur = api.S.f.places; if (cur.length === 1 && cur[0] === k) api.setFilter('places', []); else api.setFilter('places', k); };
+      g.addEventListener('click', fn);
+      g.addEventListener('keydown', function (e) { if (e.key === 'Enter') fn(e); });
+    });
+  }
+  function polarOpt(api, items, o) {
+    o = o || {};
+    var T = api.tokens(), max = Math.max.apply(null, items.map(function (i) { return i.v; }).concat([1]));
+    return {
+      tooltip: { trigger: 'item', formatter: function (p) { return '<b>' + items[p.dataIndex].v + (o.unit || '') + '</b> · ' + api.esc(items[p.dataIndex].k); } },
+      angleAxis: { max: max * (o.span || 1.33), startAngle: 90, clockwise: true, show: false },
+      radiusAxis: { type: 'category', data: items.map(function (i) { return i.k; }), show: false },
+      polar: { radius: ['14%', '80%'], center: [o.cx || '27%', '52%'] },
+      series: [{ type: 'bar', coordinateSystem: 'polar', barWidth: o.bw || 9, roundCap: true, showBackground: true, backgroundStyle: { color: T.grid },
+        data: items.map(function (i, k) { return { value: i.v, itemStyle: { color: i.c || T.s[0], opacity: i.c ? 1 : 1 - k * 0.1 } }; }),
+        label: { show: false } }],
+      graphic: items.map(function (i, k) {
+        return { type: 'text', left: o.labelLeft || '60%', top: (100 / (items.length + 1.4)) * (k + 0.7) + '%', style: { text: i.k + '  ' + i.v + (o.unit || ''), fill: T.ink2, font: '600 11.5px ' + T.font } };
+      })
+    };
+  }
+  function lollipopOpt(api, cats, vals, o) {
+    o = o || {};
+    var T = api.tokens();
+    return {
+      grid: { left: o.left || 36, right: 16, top: 24, bottom: 28 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'line', lineStyle: { color: T.axis } }, formatter: o.tip },
+      xAxis: axis(T, { type: 'category', data: cats, splitLine: { show: false }, axisLabel: { color: T.muted, fontSize: 10.5, interval: 0 } }),
+      yAxis: axis(T, { type: 'value', axisLine: { show: false }, name: o.unit || '', nameTextStyle: { color: T.muted } }),
+      series: [
+        { type: 'bar', barWidth: 2, data: vals.map(function (v, i) { return { value: v.value, itemStyle: { color: v.c || T.axis } }; }), silent: true, tooltip: { show: false } },
+        { type: 'scatter', symbolSize: function (v, p) { return vals[p.dataIndex].size || 12; }, data: vals.map(function (v) { return { value: v.value, mid: v.mid, itemStyle: { color: v.c || T.s[0], borderColor: T.surface, borderWidth: 2 } }; }),
+          label: { show: !!o.label, position: 'top', color: T.ink2, fontSize: 10, formatter: o.label } }
+      ]
+    };
+  }
+  function IG() { return window.Info; }
+  function gaugeGrid(api, items, o) {
+    var T = api.tokens();
+    o = o || {};
+    return '<div class="gauge-grid' + (o.compact ? ' compact' : '') + '">' + items.map(function (it) {
+      var c = stateColor(T, it.state);
+      return '<div class="gauge-cell" ' + (it.key ? 'data-k="' + it.key + '" role="button" tabindex="0" aria-pressed="' + (!!it.on) + '"' : '') + '><div class="gn"><span>' + api.esc(it.name) + '</span><span class="st" style="color:' + c + '">' + stateIcon(it.state) + '</span></div>' +
+        IG().semiGauge(Math.min(it.r, 130), { width: o.width || 150, max: 130, target: 100, color: c, track: T.grid, ink: T.ink, muted: T.muted, center: Math.round(it.r) + '%', sub: it.sub || '', label: it.name }) +
+        (it.foot ? '<div class="gf">' + it.foot + '</div>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  function slopeOpt(api, kpis) {
+    var T = api.tokens();
+    var data = kpis.map(function (k) { return { k: k, g: Math.round((k.next / k.thisYear - 1) * 1000) / 10 }; });
+    return {
+      grid: { left: 40, right: 40, top: 30, bottom: 12 },
+      tooltip: { trigger: 'item', formatter: function (p) { var d = data[p.seriesIndex]; return '<b>+' + d.g + '%</b> · ' + api.esc(d.k.name) + '<br>' + api.fmt(d.k.thisYear, 2) + d.k.unit + ' → ' + api.fmt(d.k.next, 2) + d.k.unit; } },
+      xAxis: { type: 'category', data: ['2026–27 실적', '2027 목표'], boundaryGap: false, axisLine: { lineStyle: { color: T.axis } }, axisTick: { show: false }, axisLabel: { color: T.ink2, fontWeight: 700, fontSize: 12 }, position: 'top' },
+      yAxis: { type: 'value', min: 95, max: function (v) { return Math.ceil(v.max / 10) * 10 + 5; }, show: false },
+      series: data.map(function (d, i) {
+        var c = [T.s[0], T.s[2], T.s[6], T.s[1]][i % 4];
+        return { type: 'line', data: [100, 100 + d.g], symbol: 'circle', symbolSize: 10, lineStyle: { color: c, width: 2.5 }, itemStyle: { color: T.surface, borderColor: c, borderWidth: 2.5 },
+          label: { show: false } };
+      }).map(function (sr) {
+        return sr;
+      })
+    };
+  }
+  function slopeLegend(api, kpis) {
+    var T = api.tokens();
+    return '<div class="prog" style="margin-top:6px;gap:6px">' + kpis.map(function (k, i) {
+      var c = [T.s[0], T.s[2], T.s[6], T.s[1]][i % 4], g = Math.round((k.next / k.thisYear - 1) * 1000) / 10;
+      return '<div style="display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:center;font-size:12.5px"><i style="width:12px;height:3px;border-radius:2px;background:' + c + '"></i><span style="color:var(--ink-2)">' + api.esc(k.name) + ' <small style="color:var(--muted)">' + api.fmt(k.thisYear, 1) + ' → ' + api.fmt(k.next, 1) + k.unit + '</small></span><b style="color:' + c + '">+' + g + '%</b></div>';
+    }).join('') + '</div>';
+  }
   function rate(m) { return m.lowerBetter ? m.target / m.actual * 100 : m.actual / m.target * 100; }
   function kpiState(r) { return r >= 100 ? '달성' : r >= 95 ? '주의' : '미달'; }
   function stateColor(T, s) { return s === '달성' ? T.good : s === '주의' ? T.warning : T.critical; }
@@ -354,17 +436,18 @@
       '<div class="ov-hero"><span class="big">' + R.meetings.length + '</span><span class="unit">건</span><span class="aside">' + R.meetings[0].date.replace(/-/g, '.') + ' – ' + R.meetings[R.meetings.length - 1].date.replace(/-/g, '.') + ' · ' + api.uniq(R.meetings.map(function (m) { return m.phase; })).length + '개 단계</span></div>' +
       legend([{ k: '정기', c: api.natureColor('정기'), sym: '●' }, { k: '임시', c: api.natureColor('임시'), sym: '▲' }, { k: '긴급', c: api.natureColor('긴급'), sym: '⚠' }]) + ch('ovFlow', 'h240'), { click: 'flow' });
     h += card('c4', '<span class="ov-num">01</span> 회의 기본정보', '',
-      '<div class="ov-hero"><span class="big">' + hours + '</span><span class="unit">시간</span><span class="aside">월별 회의 수 · 평균 ' + Math.round(s.totalMinutes / R.meetings.length) + '분 · 참석 ' + fmtAvg(R) + '명</span></div>' + ch('ovBasic', 'h240'), { click: 'basic' });
+      '<div class="ov-hero"><span class="big">' + api.uniq(R.meetings.map(function (m) { return m.site.key; })).length + '</span><span class="unit">곳</span><span class="aside">회의 장소 · 총 ' + hours + '시간 · 참석 ' + fmtAvg(R) + '명</span></div>' + '<div id="ovPlan">' + floorPlanHTML(R, api, true) + '</div>', { click: 'basic' });
     h += card('c4', '<span class="ov-num">02</span> 안건·논의 분석', '주제 비중 (논의 ' + s.discussions + '건)',
       '<div class="ov-hero"><span class="big">' + topTopic.pct + '%</span><span class="aside">최다 주제 · ' + topTopic.key + '</span></div>' + ch('ovTopic', 'h200'), { click: 'discussion' });
     h += card('c4', '<span class="ov-num">03</span> 의사결정 현황', '',
-      '<div class="ov-hero"><span class="big">' + s.decisions + '</span><span class="unit">건</span><span class="aside">조건부 ' + (dec['조건부'] || 0) + ' · 보류 ' + (dec['보류'] || 0) + ' · 번복 ' + reversals + '</span></div>' + ch('ovDec', 'h200'), { click: 'decision' });
+      '<div class="ov-hero"><span class="big">' + s.decisions + '</span><span class="unit">건</span><span class="aside">번복·방향 변경 ' + reversals + '건</span></div>' + '<div style="margin-top:10px">' + IG().ringSet(s.decisionByStatus.map(function (d) { return { k: d.key, pct: s.decisions ? d.value / s.decisions * 100 : 0, color: api.decisionColor(d.key), value: d.value + '건' }; }), T, 66) + '</div>', { click: 'decision' });
     h += card('c4', '<span class="ov-num">04</span> Action Item 관리', '',
-      '<div class="ov-hero"><span class="big">' + (s.actions ? Math.round((act['완료'] || 0) / s.actions * 100) : 0) + '%</span><span class="aside">완료율 · 전체 ' + s.actions + '건 · 지연 ' + s.delayed + '건</span></div>' + ch('ovAct', 'h200'), { click: 'action' });
+      '<div class="ov-hero"><span class="aside">전체 ' + s.actions + '건 · 후속 회의 기록 기준</span></div>' + IG().semiGauge(s.actions ? (act['완료'] || 0) / s.actions * 100 : 0, { width: 220, stroke: 16, color: T.good, track: T.grid, ink: T.ink, muted: T.muted, sub: '업무 완료율', label: '업무 완료율' }) +
+      legend(s.actionByStatus.map(function (d) { return { k: d.key + ' ' + d.value, c: api.actionColor(d.key) }; }).concat([{ k: '지연 ' + s.delayed, c: T.critical, sym: '⚠' }])), { click: 'action' });
     h += card('c4', '<span class="ov-num">05</span> 이전 → 현재 성과 추적', '',
-      '<div class="ov-hero"><span class="big">' + (s.loops ? Math.round(loopOk / s.loops * 100) : 0) + '%</span><span class="aside">달성 · ' + s.loops + '개 목표 추적</span></div>' + ch('ovLoop', 'h200'), { click: 'tracking' });
+      '<div class="ov-hero"><span class="big">' + (s.loops ? Math.round(loopOk / s.loops * 100) : 0) + '%</span><span class="aside">달성 · 목표 1개 = 1칸</span></div>' + '<div style="margin-top:8px">' + IG().waffle(s.loopByEval.filter(function (e) { return e.value; }).map(function (e) { return { k: e.key, v: e.value, c: api.evalColor(e.key) }; }), { cols: 10 }) + '</div>', { click: 'tracking' });
     h += card('c4', '<span class="ov-num">06</span> KPI 성과관리', finals.length ? '최종 실적 / 목표' : '',
-      (finals.length ? '<div class="ov-hero"><span class="big">' + finals.filter(function (f) { return f.state === '달성'; }).length + '/' + finals.length + '</span><span class="aside">프로젝트 KPI 달성</span></div>' + ch('ovKpi', 'h200')
+      (finals.length ? '<div class="ov-hero"><span class="big">' + finals.filter(function (f) { return f.state === '달성'; }).length + '/' + finals.length + '</span><span class="aside">프로젝트 KPI 달성 · 눈금 = 목표 100%</span></div>' + gaugeGrid(api, finals.map(function (f) { return { name: f.name.replace('POS 누적 판매', '판매량').replace('누적 ', '').replace('(CM)', ''), r: f.r, state: f.state }; }), { width: 120, compact: true })
         : '<div class="ov-hero"><span class="big">' + mets.length + '</span><span class="aside">수치 지표 자동 추출</span></div>' + ch('ovKpi', 'h200')), { click: 'kpi' });
     h += card('c4', '<span class="ov-num">07</span> 위기·리스크', '',
       '<div class="ov-hero"><span class="big">' + s.crises + '</span><span class="unit">건</span><span class="aside">해결 ' + crisisResolved + ' · 재발 ' + recurred + ' · 미결 이슈 ' + s.issues + '</span></div>' + ch('ovRisk', 'h200'), { click: 'risk' });
@@ -374,8 +457,8 @@
       '<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">' + ins.slice(0, 4).map(function (i) {
         return '<div style="display:grid;grid-template-columns:104px 1fr;gap:10px;align-items:center"><b style="font-size:' + (String(i.metric).length > 5 ? 15 : 19) + 'px;letter-spacing:-.02em">' + api.esc(i.metric) + '</b><span style="font-size:12.5px;line-height:1.4"><span style="color:var(--muted);font-weight:700;font-size:11px">' + api.esc(i.cat) + '</span><br>' + api.esc(i.title) + '</span></div>';
       }).join('') + '</div>', { click: 'insight' });
-    h += card('c4', '<span class="ov-num">11</span> 차년도 기획 ' + (ny ? ai() : ''), ny ? '2027 목표 = 올해 실적 대비' : '',
-      ny ? ch('ovNext', 'h240') : '<div class="empty">회고·차년도 회의가 포함되면 자동으로 채워집니다</div>', { click: 'next' });
+    h += card('c4', '<span class="ov-num">11</span> 차년도 기획 ' + (ny ? ai() : ''), ny ? '올해 실적 → 2027 목표 (올해 = 100 기준 지수)' : '',
+      ny ? ch('ovNext', 'h160') + slopeLegend(api, ny.kpis) : '<div class="empty">회고·차년도 회의가 포함되면 자동으로 채워집니다</div>', { click: 'next' });
     h += '</div>';
     p.innerHTML = h;
     bindGo(p, api);
@@ -384,35 +467,15 @@
     // 차트
     onClickMeeting(api.chart(el('ovFlow'), timelineOpt(R, api, true)), api);
 
-    var months = api.uniq(R.meetings.map(function (m) { return m.date.slice(0, 7); })).sort();
-    var perMonth = months.map(function (mo) { return R.meetings.filter(function (m) { return m.date.slice(0, 7) === mo; }); });
-    api.chart(el('ovBasic'), {
-      grid: { left: 30, right: 10, top: 14, bottom: 24 },
-      tooltip: { trigger: 'axis', formatter: function (ps) { var ms = perMonth[ps[0].dataIndex]; return '<b>' + ms.length + '건</b> · ' + months[ps[0].dataIndex] + '<br>' + ms.map(function (m) { return api.NATURE_GLYPH[m.nature] + ' ' + api.esc(short(m.title, 22)); }).join('<br>'); } },
-      xAxis: axis(T, { type: 'category', boundaryGap: false, data: months.map(function (x) { return +x.slice(5) + '월'; }), splitLine: { show: false }, axisLabel: { color: T.muted, fontSize: 10.5 } }),
-      yAxis: axis(T, { type: 'value', minInterval: 1, axisLine: { show: false }, splitNumber: 3 }),
-      series: [{ type: 'line', smooth: 0.4, symbol: 'circle', symbolSize: 7, data: perMonth.map(function (x) { return x.length; }),
-        lineStyle: { color: T.s[0], width: 2.5 }, itemStyle: { color: T.surface, borderColor: T.s[0], borderWidth: 2 },
-        areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(37,99,235,.28)' }, { offset: 1, color: 'rgba(37,99,235,0)' }] } } }]
-    });
+    bindRooms(api.$('#ovPlan', p) || p, api);
 
     var tops = R.topicShare.slice(0, 6);
-    api.chart(el('ovTopic'), hbarOpt(api, tops.map(function (t) { return t.key; }), tops.map(function (t) { return t.pct; }), { unit: '%', left: 84, color: T.s[0] }));
+    api.chart(el('ovTopic'), polarOpt(api, tops.slice(0, 5).map(function (t) { return { k: t.key, v: t.pct }; }), { unit: '%', bw: 8 }));
 
-    api.chart(el('ovDec'), donutOpt(api, s.decisionByStatus.map(function (d) { return { k: d.key, value: d.value, c: api.decisionColor(d.key) }; }), s.decisions, '결정'));
-    addLegendRight(el('ovDec'), s.decisionByStatus.map(function (d) { return { k: d.key + ' ' + d.value, c: api.decisionColor(d.key) }; }));
-
-    api.chart(el('ovAct'), donutOpt(api, s.actionByStatus.map(function (d) { return { k: d.key, value: d.value, c: api.actionColor(d.key) }; }), s.actions, '업무'));
-    addLegendRight(el('ovAct'), s.actionByStatus.map(function (d) { return { k: d.key + ' ' + d.value, c: api.actionColor(d.key) }; }).concat([{ k: '지연 ' + s.delayed, c: T.critical, sym: '⚠' }]));
-
-    var le = s.loopByEval.filter(function (e) { return e.value; });
-    api.chart(el('ovLoop'), hbarOpt(api, le.map(function (e) { return e.key; }), le.map(function (e) { return e.value; }), { unit: '건', left: 76, color: le.map(function (e) { return api.evalColor(e.key); }) }));
-
-    if (finals.length) {
-      api.chart(el('ovKpi'), kpiBulletOpt(api, finals.map(function (f) { return { name: f.name.replace('누적 ', '').replace('(CM)', ''), r: f.r, state: f.state, tip: f.last.actual + f.unit + ' / 목표 ' + f.last.target + f.unit }; }), 96));
-    } else if (mets.length) {
-      api.chart(el('ovKpi'), kpiBulletOpt(api, mets.slice(0, 6).map(function (m) { return { name: short(m.metric, 10), r: m.rate, state: m.state, tip: m.actual + m.unit + ' / 목표 ' + m.target + m.unit }; }), 96));
-    } else el('ovKpi').innerHTML = empty('수치형 목표·실적이 없습니다');
+    if (!finals.length) {
+      if (mets.length) api.chart(el('ovKpi'), kpiBulletOpt(api, mets.slice(0, 6).map(function (m) { return { name: short(m.metric, 10), r: m.rate, state: m.state, tip: m.actual + m.unit + ' / 목표 ' + m.target + m.unit }; }), 96));
+      else el('ovKpi').innerHTML = empty('수치형 목표·실적이 없습니다');
+    }
 
     if (R.crises.length) {
       var cRisk = api.chart(el('ovRisk'), {
@@ -432,7 +495,7 @@
     api.chart(el('ovDept'), networkOpt(R, api, true));
 
     if (ny) {
-      api.chart(el('ovNext'), nextKpiOpt(api, ny.kpis, true));
+      api.chart(el('ovNext'), slopeOpt(api, ny.kpis));
     }
   }
   function fmtAvg(R) { return R.meetings.length ? Math.round(sum(R.meetings.map(function (m) { return m.attendees.length; })) / R.meetings.length * 10) / 10 : 0; }
@@ -554,13 +617,24 @@
       }).join('') + '</div>');
     h += '</div>';
     h += '<div class="grid">';
-    h += card('c4', '회의 성격 ' + src(), '정기 / 임시 / 긴급 — 클릭하면 해당 성격만 필터링', ch('bNature', 'h240'));
-    h += card('c4', '회의 유형 ' + src(), '한 회의가 여러 유형에 해당할 수 있음 (다중 분류)', ch('bType', 'h240'));
-    h += card('c4', '회의 장소 ' + src(), '장소별 회의 건수', ch('bPlace', 'h240'));
+    var roomsV = roomsOf(ms), roomArr = Object.keys(roomsV).map(function (k) { return roomsV[k]; }).sort(function (a, b) { return b.list.length - a.list.length; });
+    h += card('c12', '회의 장소 도면 ' + src(), '본사 층별 회의 공간과 외부 사이트 · 공간을 누르면 그 장소에서 열린 회의만 봅니다 (상단 필터 "회의 장소"와 연동)',
+      '<div class="fp-wrap"><div>' + floorPlanHTML(R, api, false) + window.Info.floorLegend(T) + '</div><div class="room-list">' + roomArr.map(function (r) {
+        var on = api.S.f.places.indexOf(r.key) >= 0;
+        var avg = Math.round(sum(r.list.map(function (m) { return m.durationMin || 0; })) / r.list.length);
+        return '<button type="button" class="room-item' + (on ? ' on' : '') + '" data-place="' + api.esc(r.key) + '"><span class="fl">' + (r.floor ? r.floor + 'F' : '외부') + '</span>' +
+          '<span><b>' + api.esc(r.room) + '</b><small>' + api.esc(r.building) + ' · 평균 ' + avg + '분</small><span class="mini">' + r.list.map(function (m) { return '<i title="' + api.esc(m.id + ' ' + m.title) + '" style="background:' + api.natureColor(m.nature) + '"></i>'; }).join('') + '</span></span>' +
+          '<span class="cnt">' + r.list.length + '<small style="font-size:11px;margin-left:1px">회</small></span></button>';
+      }).join('') + '</div></div>');
+    h += card('c4', '회의 성격 ' + src(), '회의 1건 = 1칸 · ● 정기 ▲ 임시 ⚠ 긴급', '<div style="padding:8px 4px">' + window.Info.waffle(s.byNature.map(function (n) { return { k: n.key, v: n.value, c: api.natureColor(n.key), glyph: api.NATURE_GLYPH[n.key] }; }), { cols: 10 }) + '</div>');
+    h += card('c4', '회의 유형 ' + src(), '방사형 막대 · 한 회의가 여러 유형에 해당 (다중 분류)', ch('bType', 'h240'));
+    var attAvg = fmtAvg(R), attMax = Math.max.apply(null, ms.map(function (m) { return m.attendees.length; }));
+    h += card('c4', '회의당 참석 규모 ' + src(), '평균 참석 인원 / 최대 ' + attMax + '명', '<div style="display:flex;align-items:flex-end;gap:14px;margin:6px 0 12px"><span class="big-num">' + attAvg + '<small>명</small></span><span class="note" style="margin:0 0 4px">회의 1건 평균 · 부서 ' + Math.round(sum(ms.map(function (m) { return m.depts.length; })) / ms.length * 10) / 10 + '개</span></div>' +
+      window.Info.pictogram(attMax, Math.round(attAvg), { color: T.s[0], track: T.grid }) + '<div class="legend" style="margin-top:10px"><span><i class="sw" style="background:' + T.s[0] + '"></i>평균 참석</span><span><i class="sw" style="background:' + T.grid + '"></i>최대 규모까지</span></div>');
     h += card('c12', '부서별 참석 매트릭스 ' + src(), '진한 칸 = 주재 부서 · 셀을 누르면 해당 회의 상세',
       legend([{ k: '참석', c: T.seq[2] }, { k: '주재', c: T.seq[5] }]) + ch('bDeptHeat', 'h360'));
     h += card('c12', '참석자 × 회의 ' + src(), '사람별 참석 이력 (● 주재 · ✎ 기록)', ch('bPeopleHeat', 'h480'));
-    h += card('c12', '회의 시간과 규모', '막대 = 회의 시간(분) · 막대 위 숫자 = 참석 인원', legend(A.NATURES.map(function (n) { return { k: n, c: api.natureColor(n) }; })) + ch('bDur', 'h280'));
+    h += card('c12', '회의 시간과 규모', '롤리팝 높이 = 회의 시간(분) · 점 크기 = 참석 인원', legend(A.NATURES.map(function (n) { return { k: n, c: api.natureColor(n) }; })) + ch('bDur', 'h280'));
     h += '</div>';
     p.innerHTML = h;
     api.$$('.srow[data-mid]', p).forEach(function (b) {
@@ -572,12 +646,10 @@
       b.addEventListener('keydown', function (e) { if (e.key === 'Enter') api.setFilter('people', b.dataset.person); });
     });
 
-    var cN = api.chart(el('bNature'), donutOpt(api, s.byNature.map(function (n) { return { k: n.key, value: n.value, c: api.natureColor(n.key) }; }), ms.length, '회의'));
-    addLegendRight(el('bNature'), s.byNature.map(function (n) { return { k: n.key + ' ' + n.value, c: api.natureColor(n.key), sym: api.NATURE_GLYPH[n.key] }; }));
-    if (cN) cN.on('click', function (e) { api.setFilter('nature', e.name); });
-    var cT = api.chart(el('bType'), hbarOpt(api, s.byType.map(function (t) { return t.key; }), s.byType.map(function (t) { return t.value; }), { unit: '건', left: 70, color: T.s[0] }));
-    if (cT) cT.on('click', function (e) { api.setFilter('types', e.name); });
-    api.chart(el('bPlace'), hbarOpt(api, placeArr.map(function (x) { return x.k; }), placeArr.map(function (x) { return x.v; }), { unit: '건', left: 150, color: T.s[0] }));
+    bindRooms(p, api);
+    var tItems = s.byType.slice().sort(function (a, b) { return b.value - a.value; }).map(function (t) { return { k: t.key, v: t.value }; });
+    var cT = api.chart(el('bType'), polarOpt(api, tItems, { unit: '건' }));
+    if (cT) cT.on('click', function (e) { api.setFilter('types', tItems[e.dataIndex].k); });
 
     // 부서 매트릭스
     var depts = R.depts.filter(function (d) { return d.meetings; }).map(function (d) { return d.dept; });
@@ -616,14 +688,9 @@
     });
     if (cP) cP.on('click', function (e) { api.openMeeting(e.data[3]); });
 
-    var cD = api.chart(el('bDur'), {
-      grid: { left: 40, right: 40, top: 16, bottom: 30 },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function (ps) { var m = ms[ps[0].dataIndex]; return '<b>' + m.durationMin + '분</b> · 참석 ' + m.attendees.length + '명<br>' + api.esc(m.id) + ' · ' + api.esc(m.title); } },
-      xAxis: axis(T, { type: 'category', data: ms.map(function (m) { return mno(m.id); }), splitLine: { show: false }, axisLabel: { color: T.muted, fontSize: 10.5, interval: 0 } }),
-      yAxis: [axis(T, { type: 'value', name: '분', nameTextStyle: { color: T.muted }, axisLine: { show: false } })],
-      series: [{ type: 'bar', barWidth: '55%', data: ms.map(function (m) { return { value: m.durationMin, mid: m.id, itemStyle: { color: api.natureColor(m.nature), borderRadius: [4, 4, 0, 0] } }; }),
-        label: { show: true, position: 'top', color: T.ink2, fontSize: 10, formatter: function (pp) { return ms[pp.dataIndex].attendees.length + '명'; } } }]
-    });
+    var cD = api.chart(el('bDur'), lollipopOpt(api, ms.map(function (m) { return mno(m.id); }), ms.map(function (m) { return { value: m.durationMin, mid: m.id, c: api.natureColor(m.nature), size: 6 + m.attendees.length * 1.6 }; }), {
+      unit: '분', label: function (pp) { return ms[pp.dataIndex].attendees.length + '명'; },
+      tip: function (ps) { var m = ms[ps[0].dataIndex]; return '<b>' + m.durationMin + '분</b> · 참석 ' + m.attendees.length + '명<br>' + api.esc(m.id) + ' · ' + api.esc(m.title); } }));
     onClickMeeting(cD, api);
   }
 
@@ -690,13 +757,13 @@
       tile('최다 주제', R.topicShare[0].key, '', R.topicShare[0].pct + '%') + tile('반복 이슈', recurring.length, '건', '2회 이상 등장') +
       tile('보류·연기된 논의', ds.filter(function (d) { return d.resolution === '보류·연기'; }).length, '건', '결론 유형 AI 분류') + '</div>';
     h += '<div class="grid">';
-    h += card('c5', '가장 많이 논의된 주제 ' + ai(), '논의 텍스트의 주제 키워드 비중', ch('dTopic', 'h320'));
+    h += card('c5', '가장 많이 논의된 주제 ' + ai(), '방사형 막대 · 논의 텍스트의 주제 키워드 비중', ch('dTopic', 'h320'));
     h += card('c7', '단계별 논의 주제 변화 ' + ai(), '진할수록 해당 단계에서 많이 논의됨 (주제 점유율 %)', ch('dTopicPhase', 'h320'));
     h += card('c7', '주요 키워드 ' + ai(), '원문 전체에서 등장 빈도 · 크기 = 언급 수', ch('dKw', 'h360'));
     h += card('c5', '키워드 흐름', '상위 키워드의 회의별 언급 추이', ch('dKwTrend', 'h360'));
     h += card('c6', '부서 간 이견 지도 ' + ai(), '같은 안건에서 의견이 갈린 부서 쌍 (색이 진할수록 잦음)', ch('dConflict', 'h360'));
-    h += card('c3', '이견의 결론 방식 ' + ai(), '이견이 어떻게 정리됐나', ch('dRes', 'h280') );
-    h += card('c3', '반복적으로 등장한 이슈 ' + src(), '미결 이슈의 회의 등장 횟수', recurring.length ? ch('dRecur', 'h360') : empty('2회 이상 등장한 이슈가 없습니다'));
+    h += card('c3', '이견의 결론 방식 ' + ai(), '논의 1건 = 1칸', '<div id="dRes" style="margin-top:6px"></div>');
+    h += card('c3', '반복적으로 등장한 이슈 ' + src(), '점 1개 = 회의 1회 등장 · 색 = 당시 상태', recurring.length ? ch('dRecur', 'h360') : empty('2회 이상 등장한 이슈가 없습니다'));
     h += card('c12', '안건별 논의 · 이견 · 결론', '',
       '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>회의</th><th>안건</th><th>주제</th><th>관련 부서</th><th>핵심 논의</th><th>이견·대안</th><th>결론</th><th>결론 방식</th></tr></thead><tbody>' +
       ds.map(function (d) {
@@ -707,7 +774,7 @@
     p.innerHTML = h;
     api.bindChips(p);
 
-    api.chart(el('dTopic'), hbarOpt(api, R.topicShare.map(function (t) { return t.key; }), R.topicShare.map(function (t) { return t.pct; }), { unit: '%', left: 96, color: T.s[0], bg: true, barWidth: 14 }));
+    api.chart(el('dTopic'), polarOpt(api, R.topicShare.map(function (t) { return { k: t.key, v: t.pct }; }), { unit: '%', bw: 9, cx: '26%', labelLeft: '56%' }));
 
     var phases = A.PHASES.filter(function (ph) { return ms.some(function (m) { return m.phase === ph; }); });
     var topics = A.TOPICS;
@@ -776,14 +843,20 @@
     } else el('dConflict').innerHTML = empty('부서 간 이견 기록이 없습니다');
 
     var rc = resKeys.map(function (k, i) { return { k: k, value: ds.filter(function (d) { return d.resolution === k; }).length, c: resCol[i] }; });
-    api.chart(el('dRes'), donutOpt(api, rc, ds.length, '논의'));
-    addLegendRight(el('dRes'), rc.map(function (r) { return { k: r.k + ' ' + r.value, c: r.c }; }));
+    el('dRes').innerHTML = IG().waffle(rc.map(function (r) { return { k: r.k, v: r.value, c: r.c }; }), { cols: 9 });
 
     if (recurring.length) {
       var ic = recurring.slice(0, 12);
-      api.chart(el('dRecur'), hbarOpt(api, ic.map(function (i) { return i.id + ' ' + short(i.title, 8); }), ic.map(function (i) { return i.mentions; }), {
-        unit: '회', left: 120, color: T.s[1], tip: function (pp) { var it = ic[pp.dataIndex]; return '<b>' + it.mentions + '회</b> 등장 · ' + api.esc(it.title) + '<br><span style="color:' + T.muted + '">현재 상태: ' + it.status + '</span>'; }
-      }));
+      var stc = { '오픈': T.serious, '모니터링': T.warning, '종결': T.good, '부분종결': T.s[2], '이관': T.s[6] };
+      var dots = [];
+      ic.forEach(function (it, y) { it.history.forEach(function (hh, x) { dots.push({ value: [x, y], it: it, hh: hh, itemStyle: { color: stc[hh.status] || T.neutral } }); }); });
+      api.chart(el('dRecur'), {
+        grid: { left: 118, right: 14, top: 8, bottom: 24 },
+        tooltip: { formatter: function (pp) { var d = pp.data; return '<b>' + d.it.id + '</b> ' + api.esc(d.it.title) + '<br>' + (d.value[0] + 1) + '번째 등장 · ' + d.hh.meeting + ' · ' + d.hh.raw; } },
+        xAxis: axis(T, { type: 'category', data: Array.apply(null, Array(Math.max.apply(null, ic.map(function (i) { return i.mentions; })))).map(function (_, i) { return (i + 1) + '회'; }), axisLabel: { color: T.muted }, splitLine: { show: false } }),
+        yAxis: axis(T, { type: 'category', inverse: true, data: ic.map(function (i) { return i.id + ' ' + short(i.title, 7); }), axisLine: { show: false }, axisLabel: { color: T.ink2, fontSize: 11, interval: 0 } }),
+        series: [{ type: 'scatter', symbolSize: 13, data: dots, itemStyle: { borderColor: T.surface, borderWidth: 2 } }]
+      });
     }
   }
 
@@ -817,8 +890,9 @@
       tile('<b style="color:var(--critical-ink)">↺</b> 번복·방향 변경 ' + (R.ann ? ai('AI') : ''), rev.length, '건', rev.map(function (l) { return l.from + '→' + l.to; }).join(', ') || '감지되지 않음') +
       tile('재검토 시점 명시', D.filter(function (d) { return d.review; }).length, '건', '조건에 날짜·월이 적힌 결정') + '</div>';
     h += '<div class="grid">';
-    h += card('c8', '회의별 의사결정 ' + src(), '막대를 누르면 해당 회의의 결정 목록', legend(['확정', '조건부', '잠정', '보류'].map(function (k) { return { k: k, c: api.decisionColor(k) }; })) + ch('decBar', 'h280'));
-    h += card('c4', '승인 레벨', '대표·긴급 승인 vs 팀 확정', ch('decLvl', 'h280'));
+    h += card('c8', '회의별 의사결정 도트 매트릭스 ' + src(), '점 1개 = 결정 1건 · 색 = 상태 · 점을 누르면 원문', legend(['확정', '조건부', '잠정', '보류'].map(function (k) { return { k: k, c: api.decisionColor(k) }; })) + ch('decBar', 'h280'));
+    h += card('c4', '결정 상태 비율', '상태별 비중 링', IG().ringSet(['확정', '조건부', '잠정', '보류'].map(function (k) { return { k: k, pct: (byS[k] || 0) / D.length * 100, color: api.decisionColor(k), value: (byS[k] || 0) + '건' }; }), T, 88) +
+      '<div style="margin-top:16px"><div class="card-sub" style="margin-bottom:8px;font-weight:700;color:var(--ink-2)">승인 레벨</div>' + IG().progressRows([{ k: '대표·긴급 승인', pct: lvl['대표·긴급 승인'] / D.length * 100, c: T.ink, label: lvl['대표·긴급 승인'] + '건' }, { k: '팀 확정', pct: lvl['팀 확정'] / D.length * 100, c: T.s[0], label: lvl['팀 확정'] + '건' }]) + '</div>');
     h += card('c12', '결정 변경 흐름 ' + (R.ann ? ai() : src()), '앞선 결정이 어떻게 구체화·유지·연기·번복됐는지 (가로축 = 회의 순서)',
       legend(['구체화', '유지', '연기', '예외', '번복', '연계'].map(function (k) { return { k: k, c: linkColor(T, k) }; })) + (links.length ? ch('decGraph', 'h420') : empty('결정 간 연결을 찾지 못했습니다')));
     h += card('c6', '유보사항이 남은 회의', '결정하지 못하고 넘긴 사항 (회의별)', ch('decRes', 'h280'));
@@ -836,20 +910,20 @@
     api.bindChips(p);
 
     var ms = R.meetings.filter(function (m) { return m.decisions.length; });
-    var cB = api.chart(el('decBar'), {
-      grid: { left: 30, right: 10, top: 10, bottom: 28 },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function (ps) { var m = ms[ps[0].dataIndex]; return '<b>' + api.esc(m.id) + '</b> ' + api.esc(short(m.title, 24)) + '<br>' + ps.filter(function (x) { return x.value; }).map(function (x) { return '<b>' + x.value + '</b> ' + x.seriesName; }).join(' · '); } },
-      xAxis: axis(T, { type: 'category', data: ms.map(function (m) { return mno(m.id); }), splitLine: { show: false }, axisLabel: { color: T.muted, interval: 0 } }),
-      yAxis: axis(T, { type: 'value', minInterval: 1, axisLine: { show: false } }),
-      series: ['확정', '조건부', '잠정', '보류'].map(function (k) {
-        return { name: k, type: 'bar', stack: 'd', barWidth: '55%', itemStyle: { color: api.decisionColor(k), borderColor: T.surface, borderWidth: 1 },
-          data: ms.map(function (m) { return { value: D.filter(function (d) { return d.meeting === m.id && d.status === k; }).length || null, mid: m.id }; }) };
-      })
+    var dd = [], maxN = 0;
+    ms.forEach(function (m, x) {
+      var list = ['확정', '조건부', '잠정', '보류'].reduce(function (a, k) { return a.concat(D.filter(function (d) { return d.meeting === m.id && d.status === k; })); }, []);
+      maxN = Math.max(maxN, list.length);
+      list.forEach(function (d, y) { dd.push({ value: [x, y + 1], id: d.id, d: d, itemStyle: { color: api.decisionColor(d.status) } }); });
     });
-    onClickMeeting(cB, api);
-    api.chart(el('decLvl'), donutOpt(api, [{ k: '대표·긴급 승인', value: lvl['대표·긴급 승인'], c: T.ink }, { k: '팀 확정', value: lvl['팀 확정'], c: T.s[0] }], D.length, '결정'));
-    addLegendRight(el('decLvl'), [{ k: '대표·긴급 승인 ' + lvl['대표·긴급 승인'], c: T.ink }, { k: '팀 확정 ' + lvl['팀 확정'], c: T.s[0] }]);
-
+    var cB = api.chart(el('decBar'), {
+      grid: { left: 30, right: 10, top: 12, bottom: 28 },
+      tooltip: { formatter: function (pp) { var d = pp.data.d; return '<b>' + d.id + '</b> · ' + d.statusRaw + '<br>' + api.esc(d.text) + '<br><span style="color:' + T.muted + '">' + d.meeting + ' · ' + d.date + '</span>'; } },
+      xAxis: axis(T, { type: 'category', data: ms.map(function (m) { return mno(m.id); }), splitLine: { show: false }, axisLabel: { color: T.muted, interval: 0 } }),
+      yAxis: axis(T, { type: 'value', min: 0, max: maxN + 0.6, interval: 1, axisLine: { show: false }, axisLabel: { color: T.muted, formatter: function (v) { return v >= 1 && v <= maxN ? v : ''; } } }),
+      series: [{ type: 'scatter', symbolSize: 15, data: dd, itemStyle: { borderColor: T.surface, borderWidth: 2 } }]
+    });
+    if (cB) cB.on('click', function (e) { api.openEntity(e.data.id); });    onClickMeeting(cB, api);
     if (links.length) {
       var gEl2 = el('decGraph');
       var comps = decisionGraphOpt(R, api, links);
@@ -858,13 +932,8 @@
     }
 
     var resM = R.meetings.map(function (m) { return { m: m, n: m.reserved && !/^없음/.test(m.reserved) ? m.reserved.split(/,|·|\//).filter(function (x) { return x.trim().length > 1; }).length : 0 }; });
-    var cR = api.chart(el('decRes'), {
-      grid: { left: 30, right: 10, top: 10, bottom: 28 },
-      tooltip: { trigger: 'item', formatter: function (pp) { var x = resM[pp.dataIndex]; return '<b>유보 ' + x.n + '건</b> · ' + api.esc(x.m.id) + '<br>' + api.esc(x.m.reserved || '없음'); } },
-      xAxis: axis(T, { type: 'category', data: resM.map(function (x) { return mno(x.m.id); }), splitLine: { show: false }, axisLabel: { color: T.muted, interval: 0 } }),
-      yAxis: axis(T, { type: 'value', minInterval: 1, axisLine: { show: false } }),
-      series: [{ type: 'bar', barWidth: '50%', data: resM.map(function (x) { return { value: x.n, mid: x.m.id, itemStyle: { color: T.s[3], borderRadius: [4, 4, 0, 0] } }; }) }]
-    });
+    var cR = api.chart(el('decRes'), lollipopOpt(api, resM.map(function (x) { return mno(x.m.id); }), resM.map(function (x) { return { value: x.n, mid: x.m.id, c: x.n >= 4 ? T.s[3] : T.s[0], size: x.n ? 8 + x.n * 2.5 : 5 }; }), {
+      unit: '건', tip: function (ps) { var x = resM[ps[0].dataIndex]; return '<b>유보 ' + x.n + '건</b> · ' + api.esc(x.m.id) + '<br>' + api.esc(x.m.reserved || '없음'); } }));
     onClickMeeting(cR, api);
 
     var tp = A.TOPICS.map(function () { return 0; });
@@ -934,7 +1003,9 @@
       tile('<i class="dot" style="background:' + api.actionColor('미착수') + '"></i>미착수', st['미착수'] || 0, '건', '예정 상태') + '</div>';
     h += '<div class="grid">';
     h += card('c12', '업무 간트 차트 ' + src(), '지시일(회의일) → 마감일 · 색 = 최종 상태 · ⚠ = 지연 기록 · 막대를 누르면 원문', legend(['완료', '부분완료', '진행중', '미착수'].map(function (k) { return { k: k, c: api.actionColor(k) }; }).concat([{ k: '지연', c: T.critical, sym: '⚠' }])) + '<div style="max-height:560px;overflow:auto">' + ch('aGantt', 'h480') + '</div>');
-    h += card('c6', '부서별 업무 현황', '담당(공동 포함) 기준 상태별 건수', ch('aDept', 'h320'));
+    h += card('c3', '업무 완료율', '후속 회의 기록 기준', IG().semiGauge(AC.length ? (st['완료'] || 0) / AC.length * 100 : 0, { width: 220, stroke: 16, color: T.good, track: T.grid, ink: T.ink, muted: T.muted, sub: (st['완료'] || 0) + ' / ' + AC.length + '건 완료', label: '업무 완료율' }) +
+      '<div style="margin-top:12px">' + IG().waffle(['완료', '부분완료', '진행중', '미착수'].map(function (k) { return { k: k, v: st[k] || 0, c: api.actionColor(k) }; }).filter(function (x) { return x.v; }), { cols: 12 }) + '</div>');
+    h += card('c3', '부서별 업무 완료율', '0 · 50 · 100 눈금 진행 막대', '<div id="aDept"></div>');
     h += card('c3', '우선순위 × 상태', '', ch('aPrio', 'h320'));
     h += card('c3', '업무 리드타임', '지시일부터 마감일까지 (일)', ch('aLead', 'h320'));
     h += card('c12', 'Action Item 목록', '',
@@ -969,18 +1040,8 @@
     });
     if (cg) cg.on('click', function (e) { api.openEntity(e.data.id); });
 
-    var dl = R.depts.filter(function (d) { return d.actions; }).sort(function (a, b) { return b.actions - a.actions; });
-    api.chart(el('aDept'), {
-      grid: { left: 90, right: 20, top: 26, bottom: 10 },
-      legend: { top: 0, left: 0, data: ['완료', '부분완료', '진행중', '미착수'], itemWidth: 10, itemHeight: 10, textStyle: { color: T.ink2, fontSize: 11.5 } },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      xAxis: { type: 'value', show: false },
-      yAxis: axis(T, { type: 'category', inverse: true, data: dl.map(function (d) { return d.dept; }), axisLine: { show: false }, axisLabel: { color: T.ink2 } }),
-      series: ['완료', '부분완료', '진행중', '미착수'].map(function (k) {
-        return { name: k, type: 'bar', stack: 'x', barWidth: 13, itemStyle: { color: api.actionColor(k), borderColor: T.surface, borderWidth: 1 },
-          data: dl.map(function (d) { return AC.filter(function (a) { return a.ownerDepts.indexOf(d.dept) >= 0 && a.status === k; }).length || null; }) };
-      }).concat([{ name: '완료율', type: 'bar', stack: 'x', data: dl.map(function () { return 0; }), label: { show: true, position: 'right', color: T.ink2, fontSize: 11, formatter: function (pp) { return dl[pp.dataIndex].doneRate + '%'; } }, itemStyle: { color: 'transparent' }, tooltip: { show: false } }])
-    });
+    var dl = R.depts.filter(function (d) { return d.actions; }).sort(function (a, b) { return b.doneRate - a.doneRate || b.actions - a.actions; });
+    el('aDept').innerHTML = IG().progressRows(dl.map(function (d) { return { k: A.DEPT_SHORT[d.dept] || d.dept, pct: d.doneRate, c: d.doneRate >= 85 ? T.good : d.doneRate >= 70 ? T.s[0] : T.warning, label: Math.round(d.doneRate) + '%', note: d.done + '/' + d.actions + '건' + (d.delayed ? ' · 지연 ' + d.delayed : '') }; }));
 
     var prios = api.uniq(AC.map(function (a) { return a.priority; }));
     var prOrder = ['최우선', '높음', '중간', '낮음'];
@@ -1033,9 +1094,9 @@
       tile('미달', L.filter(function (l) { return l.eval === '미달'; }).length, '건', '') +
       tile('수치화된 지표 ' + (R.ann ? ai('AI') : ''), mets.length, '개', '평균 달성률 ' + (mets.length ? Math.round(sum(mets.map(function (m) { return Math.min(m.rate, 200); })) / mets.length) : 0) + '%') + '</div>';
     h += '<div class="grid">';
-    h += card('c4', '평가 결과 분포 ' + src(), '원문의 달성평가 표기를 정규화', ch('tEval', 'h280'));
+    h += card('c4', '평가 결과 분포 ' + src(), '목표 1개 = 1칸 · 원문의 달성평가 표기를 정규화', '<div id="tEval" style="margin-top:8px"></div>');
     h += card('c8', '목표 → 결과 → 다음 실행 ' + ai(), '추적 대상(결정·업무·이슈)이 어떤 결과를 거쳐 어떤 후속 조치로 이어졌나', ch('tSankey', 'h280'));
-    h += card('c12', '지표별 목표 대비 달성률 ' + (R.ann ? ai() : ai('자동 추출')), '100% = 목표 · 낮을수록 좋은 지표(원가·품절률 등)는 역산 · 점을 누르면 해당 회의',
+    h += card('c12', '지표별 목표 대비 달성률 (덤벨) ' + (R.ann ? ai() : ai('자동 추출')), '회색 점 = 목표(100%) → 색 점 = 실제 달성률 · 낮을수록 좋은 지표는 역산 · 점을 누르면 해당 회의',
       legend([{ k: '달성 (≥100%)', c: T.good }, { k: '주의 (95–100%)', c: T.warning }, { k: '미달 (<95%)', c: T.critical }]) + (mets.length ? ch('tMet', 'h480') : empty('수치형 목표를 찾지 못했습니다')));
     if (cmp) {
       h += card('c6', cmp.creative.title + ' ' + ai(), '목표 CTR ' + cmp.creative.target + '%', ch('tCtr', 'h240') +
@@ -1058,8 +1119,7 @@
     api.bindChips(p);
 
     var le = s.loopByEval.filter(function (e) { return e.value; });
-    api.chart(el('tEval'), donutOpt(api, le.map(function (e) { return { k: e.key, value: e.value, c: api.evalColor(e.key) }; }), L.length, '목표'));
-    addLegendRight(el('tEval'), le.map(function (e) { return { k: e.key + ' ' + e.value, c: api.evalColor(e.key) }; }));
+    el('tEval').innerHTML = IG().waffle(le.map(function (e) { return { k: e.key, v: e.value, c: api.evalColor(e.key) }; }), { cols: 8 });
 
     // 생키: 추적 대상 유형 → 평가 → 다음 실행
     var kindOf = function (ref) { return /^D-/.test(ref) ? '결정(D)' : /^A-/.test(ref) ? '업무(A)' : /^OI-/.test(ref) ? '이슈(OI)' : '프로젝트 KPI'; };
@@ -1083,13 +1143,19 @@
       var ms = mets.slice();
       var mEl = el('tMet'); mEl.style.height = Math.max(260, ms.length * 20 + 50) + 'px';
       var cm = api.chart(mEl, {
-        grid: { left: 200, right: 90, top: 22, bottom: 26 },
-        tooltip: { trigger: 'item', formatter: function (pp) { var m = ms[pp.dataIndex]; return '<b>' + Math.round(m.rate) + '%</b> ' + stateIcon(m.state) + ' ' + m.state + '<br>' + api.esc(m.metric) + '<br><span style="color:' + T.muted + '">목표 ' + api.fmt(m.target, 2) + m.unit + ' · 실제 ' + api.fmt(m.actual, 3) + m.unit + (m.lowerBetter ? ' (낮을수록 좋음)' : '') + ' · ' + m.meeting + '</span>'; } },
-        xAxis: axis(T, { type: 'value', min: 0, max: function (v) { return Math.max(150, Math.ceil(v.max / 10) * 10); }, axisLabel: { color: T.muted, formatter: '{value}%' } }),
-        yAxis: axis(T, { type: 'category', inverse: true, data: ms.map(function (m) { return mno(m.meeting) + ' · ' + m.metric; }), axisLine: { show: false }, axisLabel: { color: T.ink2, fontSize: 11, width: 190, overflow: 'truncate', interval: 0 } }),
-        series: [{ type: 'bar', barWidth: 10, data: ms.map(function (m) { return { value: Math.round(m.rate * 10) / 10, mid: m.meeting, itemStyle: { color: stateColor(T, m.state), borderRadius: [0, 4, 4, 0] } }; }),
-          label: { show: true, position: 'right', fontSize: 10.5, color: T.ink2, formatter: function (pp) { var m = ms[pp.dataIndex]; return Math.round(m.rate) + '% · ' + api.fmt(m.actual, 2) + m.unit; } },
-          markLine: { silent: true, symbol: 'none', lineStyle: { color: T.ink, width: 1.5, type: 'solid' }, label: { formatter: '목표 100%', color: T.muted, fontSize: 10, position: 'start' }, data: [{ xAxis: 100 }] } }]
+        grid: { left: 200, right: 110, top: 22, bottom: 26 },
+        tooltip: { trigger: 'item', formatter: function (pp) { var m = ms[pp.dataIndex]; if (!m) return ''; return '<b>' + Math.round(m.rate) + '%</b> ' + stateIcon(m.state) + ' ' + m.state + '<br>' + api.esc(m.metric) + '<br><span style="color:' + T.muted + '">목표 ' + api.fmt(m.target, 2) + m.unit + ' · 실제 ' + api.fmt(m.actual, 3) + m.unit + (m.lowerBetter ? ' (낮을수록 좋음)' : '') + ' · ' + m.meeting + '</span>'; } },
+        xAxis: axis(T, { type: 'value', min: function (v) { return Math.min(50, Math.floor(v.min / 10) * 10); }, max: function (v) { return Math.max(150, Math.ceil(v.max / 10) * 10); }, axisLabel: { color: T.muted, formatter: '{value}%' } }),
+        yAxis: axis(T, { type: 'category', inverse: true, data: ms.map(function (m) { return mno(m.meeting) + ' · ' + m.metric; }), axisLine: { show: false }, splitLine: { show: true, lineStyle: { color: T.grid } }, axisLabel: { color: T.ink2, fontSize: 11, width: 190, overflow: 'truncate', interval: 0 } }),
+        series: [
+          { type: 'custom', silent: true, renderItem: function (params, e) { var y = e.value(0), a = e.coord([100, y]), b = e.coord([e.value(1), y]); return { type: 'line', shape: { x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, style: { stroke: stateColor(T, ms[y].state), lineWidth: 3, opacity: 0.35 } }; },
+            data: ms.map(function (m, i) { return [i, Math.round(m.rate * 10) / 10]; }), encode: { x: 1, y: 0 }, z: 1 },
+          { type: 'scatter', symbolSize: 7, silent: true, data: ms.map(function (m, i) { return [100, i]; }), itemStyle: { color: T.neutral }, z: 2 },
+          { type: 'scatter', symbolSize: 12, data: ms.map(function (m, i) { return { value: [Math.round(m.rate * 10) / 10, i], mid: m.meeting, itemStyle: { color: stateColor(T, m.state), borderColor: T.surface, borderWidth: 2 } }; }), z: 3,
+            label: { show: true, position: 'right', fontSize: 10.5, color: T.ink2, formatter: function (pp) { var m = ms[pp.dataIndex]; return Math.round(m.rate) + '% · ' + api.fmt(m.actual, 2) + m.unit; } },
+            tooltip: { formatter: function (pp) { var m = ms[pp.dataIndex]; return '<b>' + Math.round(m.rate) + '%</b> ' + stateIcon(m.state) + ' ' + m.state + '<br>' + api.esc(m.metric) + '<br><span style="color:' + T.muted + '">목표 ' + api.fmt(m.target, 2) + m.unit + ' · 실제 ' + api.fmt(m.actual, 3) + m.unit + ' · ' + m.meeting + '</span>'; } },
+            markLine: { silent: true, symbol: 'none', lineStyle: { color: T.ink, width: 1.2, type: 'solid' }, label: { formatter: '목표 100%', color: T.muted, fontSize: 10, position: 'start' }, data: [{ xAxis: 100 }] } }
+        ]
       });
       onClickMeeting(cm, api);
     }
@@ -1133,17 +1199,12 @@
       return { k: k, last: last, prev: prev, r: r, st: stt, delta: delta, good: good, basis: (m && m.link.dataBasis) || last.basis || '' };
     });
     if (!kpiSel || !ks.some(function (k) { return k.key === kpiSel; })) kpiSel = ks[0].key;
-    h += '<div class="kpis">' + cards.map(function (c) {
-      var w = Math.min(100, c.r / 1.3);
-      return '<div class="kpi" role="button" tabindex="0" data-k="' + c.k.key + '" aria-pressed="' + (kpiSel === c.k.key) + '"><div class="name"><span>' + api.esc(c.k.name) + '</span><span class="st" style="color:' + stateColor(T, c.st) + '">' + stateIcon(c.st) + ' ' + c.st + '</span></div>' +
-        '<div class="val">' + api.fmt(c.last.actual, 2) + '<small>' + c.k.unit + '</small></div>' +
-        '<div class="bar"><i style="width:' + w + '%;background:' + stateColor(T, c.st) + '"></i><em style="left:' + (100 / 1.3) + '%"></em></div>' +
-        '<div class="row"><span>목표 ' + api.fmt(c.last.target, 2) + c.k.unit + ' · 달성률 <b>' + Math.round(c.r * 10) / 10 + '%</b></span></div>' +
-        '<div class="row"><span>' + (c.delta == null ? '이전 시점 없음' : '이전 대비 <span class="' + (c.good ? 'delta-up' : 'delta-down') + '">' + (c.delta > 0 ? '▲ +' : '▼ ') + api.fmt(c.delta, 2) + c.k.unit + '</span>') + '</span><span>' + api.esc(c.last.label) + '</span></div>' +
-        '<div class="row"><span class="note" style="margin:0">기준: ' + api.esc(short(c.basis, 28)) + '</span></div></div>';
-    }).join('') + '</div>';
+    h += gaugeGrid(api, cards.map(function (c) {
+      return { key: c.k.key, on: kpiSel === c.k.key, name: c.k.name, r: c.r, state: c.st, sub: api.fmt(c.last.actual, 2) + c.k.unit + ' / ' + api.fmt(c.last.target, 2) + c.k.unit,
+        foot: '<span>' + (c.delta == null ? '이전 시점 없음' : '이전 대비 <span class="' + (c.good ? 'delta-up' : 'delta-down') + '">' + (c.delta > 0 ? '▲ +' : '▼ ') + api.fmt(c.delta, 2) + '</span>') + '</span><span>' + api.esc(c.last.label) + '</span>' };
+    }), { width: 170 });
     h += '<div class="grid" style="margin-top:14px">';
-    h += card('c7', '프로젝트 KPI 목표 대비 실제 ' + ai(), '최종(가장 최근) 시점 기준 달성률', ch('kBullet', 'h320'));
+    h += card('c7', '목표 대비 편차 ' + ai(), '0 = 목표 · 오른쪽 초과 / 왼쪽 미달 (최근 시점 기준, 낮을수록 좋은 지표는 역산)', ch('kBullet', 'h320'));
     h += card('c5', '<span id="kSelTitle"></span> 추이 ' + ai(), '막대 = 실제 · 선 = 해당 시점 목표', ch('kTrend', 'h320'));
     h += card('c12', 'KPI 시점별 추이 (스몰 멀티플) ' + ai(), '각 KPI를 자기 단위로 그려 모양을 비교 · 녹색 점 = 목표 달성 시점', '<div class="grid" id="kSmall"></div>');
     h += card('c12', 'KPI 데이터 표', '',
@@ -1158,11 +1219,20 @@
     h += '</div>';
     p.innerHTML = h;
     api.bindChips(p);
-    api.$$('.kpi', p).forEach(function (c) {
-      var fn = function () { kpiSel = c.dataset.k; api.$$('.kpi', p).forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); }); drawTrend(); };
+    api.$$('.gauge-cell[data-k]', p).forEach(function (c) {
+      var fn = function () { kpiSel = c.dataset.k; api.$$('.gauge-cell[data-k]', p).forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); }); drawTrend(); };
       c.addEventListener('click', fn); c.addEventListener('keydown', function (e) { if (e.key === 'Enter') fn(); });
     });
-    api.chart(el('kBullet'), kpiBulletOpt(api, cards.map(function (c) { return { name: c.k.name, r: c.r, state: c.st, tip: api.fmt(c.last.actual, 2) + c.k.unit + ' / 목표 ' + api.fmt(c.last.target, 2) + c.k.unit + (c.k.lowerBetter ? ' (낮을수록 좋음)' : '') }; }), 130));
+    var gaps = cards.slice().sort(function (a, b) { return (b.r - 100) - (a.r - 100); });
+    api.chart(el('kBullet'), {
+      grid: { left: 130, right: 60, top: 10, bottom: 24 },
+      tooltip: { trigger: 'item', formatter: function (pp) { var c = gaps[pp.dataIndex]; return '<b>' + (c.r >= 100 ? '+' : '') + Math.round((c.r - 100) * 10) / 10 + '%p</b> ' + stateIcon(c.st) + ' ' + c.st + '<br>' + api.esc(c.k.name) + '<br><span style="color:' + T.muted + '">' + api.fmt(c.last.actual, 2) + c.k.unit + ' / 목표 ' + api.fmt(c.last.target, 2) + c.k.unit + '</span>'; } },
+      xAxis: axis(T, { type: 'value', axisLabel: { color: T.muted, formatter: function (v) { return (v > 0 ? '+' : '') + v + '%p'; } } }),
+      yAxis: axis(T, { type: 'category', inverse: true, data: gaps.map(function (c) { return c.k.name; }), axisLine: { show: false }, axisLabel: { color: T.ink2, fontSize: 11.5, interval: 0 } }),
+      series: [{ type: 'bar', barWidth: 10, data: gaps.map(function (c) { var v = Math.round((c.r - 100) * 10) / 10; return { value: v, itemStyle: { color: stateColor(T, c.st), borderRadius: v >= 0 ? [0, 5, 5, 0] : [5, 0, 0, 5] } }; }),
+        label: { show: true, position: 'outside', color: T.ink2, fontSize: 11, formatter: function (pp) { return (pp.value > 0 ? '+' : '') + pp.value; } },
+        markLine: { silent: true, symbol: 'none', lineStyle: { color: T.ink, width: 1.5, type: 'solid' }, label: { show: false }, data: [{ xAxis: 0 }] } }]
+    });
 
     var trendChart = null;
     function drawTrend() {
@@ -1238,7 +1308,7 @@
     h += card('c8', '미결 이슈 라이프사이클 ' + src(), '이슈가 처음 등장한 회의부터 마지막 기록까지 · 색 = 당시 상태 · 흐린 막대 = 후속 기록 없음',
       legend([{ k: '오픈', c: T.serious }, { k: '모니터링', c: T.warning }, { k: '종결', c: T.good }, { k: '부분종결', c: T.s[2] }, { k: '이관', c: T.s[6] }, { k: '후속 미기재', c: T.neutral }]) +
       (I.length ? '<div style="max-height:520px;overflow:auto">' + ch('rLife', 'h480') + '</div>' : empty()));
-    h += card('c4', '이슈 현재 상태', '마지막 기록 기준', I.length ? ch('rIss', 'h280') : empty());
+    h += card('c4', '이슈 현재 상태', '이슈 1건 = 1칸 · 마지막 기록 기준', I.length ? '<div id="rIss" style="margin-top:8px"></div><div class="big-num" style="margin-top:18px">' + R.summary.untrackedIssues + '<small>건 후속 미기재</small></div><p class="note">종결 기록 없이 이후 회의록에서 사라진 이슈</p>' : empty());
     h += '</div>';
     p.innerHTML = h;
     api.bindChips(p);
@@ -1288,8 +1358,7 @@
       });
       if (cl) cl.on('click', function (e) { api.openEntity(e.data.it.id); });
       var ist = issueStatusCounts(R);
-      api.chart(el('rIss'), donutOpt(api, ist, I.length, '이슈'));
-      addLegendRight(el('rIss'), ist.filter(function (x) { return x.value; }).map(function (x) { return { k: x.k + ' ' + x.value, c: x.c }; }));
+      el('rIss').innerHTML = IG().waffle(ist.filter(function (x) { return x.value; }).map(function (x) { return { k: x.k, v: x.value, c: x.c }; }), { cols: 8 });
     }
   }
 
@@ -1309,8 +1378,9 @@
         '<span><b>' + api.esc(A.DEPT_SHORT[e.a] || e.a) + ' ↔ ' + api.esc(A.DEPT_SHORT[e.b] || e.b) + '</b><br><span class="note" style="margin:0">공동 업무 ' + e.action + '건 · 같은 논의 ' + e.discussion + '건</span></span><b>' + e.weight + '</b></div>';
     }).join('') + '</div>' + '<p class="note">협업 강도는 원문의 공동 담당자·논의 언급을 규칙 기반으로 집계한 값입니다.</p>');
     h += card('c12', '부서별 핵심 지표', '같은 부서 순서로 네 지표를 나란히 비교 (각 지표는 자기 단위)', ch('dMulti', 'h360'));
-    h += card('c6', '부서 × 논의 주제 ' + ai(), '부서가 언급된 논의의 주제 분포', ch('dTopicHeat', 'h360'));
-    h += card('c6', '담당자별 업무량', '업무 담당 건수 상위 · 막대 색 = 부서 구분 없이 단일 색', ch('dPeople', 'h360'));
+    h += card('c4', '부서 역량 레이더 ' + ai(), '상위 4개 부서 · 각 축은 최댓값 대비 비율', ch('dRadar', 'h360'));
+    h += card('c4', '부서 × 논의 주제 ' + ai(), '부서가 언급된 논의의 주제 분포', ch('dTopicHeat', 'h360'));
+    h += card('c4', '담당자별 업무량', '업무 담당 건수 상위', ch('dPeople', 'h360'));
     h += card('c12', '부서 지표 표', '',
       '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>부서</th><th class="num">회의 참여</th><th class="num">주재</th><th class="num">참여 회의 결정 수</th><th class="num">논의 언급</th><th class="num">업무</th><th class="num">완료율</th><th class="num">지연</th><th>구성원</th></tr></thead><tbody>' +
       D.map(function (d) {
@@ -1338,6 +1408,16 @@
       grid: grids, xAxis: xs, yAxis: ys, series: ser
     });
 
+    var rd = D.filter(function (d) { return !/외부|대표/.test(d.dept); }).sort(function (a, b) { return (b.meetings + b.actions) - (a.meetings + a.actions); }).slice(0, 4);
+    var axes = [['회의 참여', 'meetings'], ['업무 담당', 'actions'], ['논의 언급', 'mentions'], ['주재', 'chaired'], ['완료율', 'doneRate']];
+    var maxes = axes.map(function (a) { return Math.max.apply(null, D.map(function (d) { return d[a[1]] || 0; }).concat([1])); });
+    api.chart(el('dRadar'), {
+      legend: { bottom: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: T.ink2, fontSize: 11 } },
+      tooltip: { trigger: 'item' },
+      radar: { radius: '62%', center: ['50%', '46%'], indicator: axes.map(function (a, i) { return { name: a[0], max: a[1] === 'doneRate' ? 100 : maxes[i] }; }),
+        axisName: { color: T.ink2, fontSize: 11 }, splitLine: { lineStyle: { color: T.grid } }, splitArea: { areaStyle: { color: [T.surface, T.surface2] } }, axisLine: { lineStyle: { color: T.grid } } },
+      series: [{ type: 'radar', symbolSize: 5, data: rd.map(function (d, i) { var c = [T.s[0], T.s[1], T.s[2], T.s[6]][i]; return { name: d.short, value: axes.map(function (a) { return d[a[1]] || 0; }), lineStyle: { color: c, width: 2 }, itemStyle: { color: c }, areaStyle: { color: c, opacity: 0.08 } }; }) }]
+    });
     var topics = A.TOPICS, cells = [], mx = 0;
     D.forEach(function (d, y) {
       topics.forEach(function (t, x) {
@@ -1458,27 +1538,28 @@
       [['유지', 'keep', '유지할 전략'], ['중단', 'stop', '중단할 전략'], ['개선', 'improve', '개선할 전략'], ['신규', 'new', '신규 시도']].map(function (x) {
         return '<div class="mq ' + x[1] + '"><h5>' + x[2] + ' <span class="pill">' + ny.strategy[x[0]].length + '</span></h5><ul>' + ny.strategy[x[0]].map(function (s) { return '<li>' + api.esc(s) + '</li>'; }).join('') + '</ul><div class="ev" style="margin-top:6px">' + api.chips(ny.strategyEv[x[0]].join(' ')) + '</div></div>';
       }).join('') + '</div>');
-    h += card('c5', '차년도 KPI ' + src(), 'D-061 승인 목표 · 올해 실적 대비 성장률', ch('nKpi', 'h240') + '<div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>KPI</th><th class="num">2026–27 실적</th><th class="num">2027 목표</th></tr></thead><tbody>' +
+    h += card('c5', '차년도 KPI 슬로프 ' + src(), 'D-061 승인 목표 · 올해 실적 = 100 기준 지수', ch('nKpi', 'h200') + slopeLegend(api, ny.kpis) + '<div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>KPI</th><th class="num">2026–27 실적</th><th class="num">2027 목표</th></tr></thead><tbody>' +
       ny.kpis.map(function (k) { return '<tr><td>' + api.esc(k.name) + '</td><td class="num">' + api.fmt(k.thisYear, 2) + k.unit + '</td><td class="num"><b>' + api.fmt(k.next, 2) + k.unit + '</b></td></tr>'; }).join('') + '</tbody></table></div>');
-    h += card('c6', '예상 리스크 매트릭스 ' + ai(), '발생 가능성 × 영향도 (1–5, AI 추정) · 오른쪽 위일수록 우선 대응', ch('nRisk', 'h320'));
-    h += card('c6', '우선 추진과제', '원문의 차년도 착수 업무와 승인 결정', '<div class="prio">' + ny.priorities.slice().sort(function (a, b) { return a.due.localeCompare(b.due); }).map(function (x, i) {
-      return '<div class="prio-item"><span class="n">' + (i + 1) + '</span><div><b>' + api.esc(x.title) + '</b><span>' + api.esc(x.owner) + ' · 기한 ' + api.esc(x.due) + '</span></div>' + api.chips(x.id) + '</div>';
-    }).join('') + '</div>');
+    h += card('c6', '예상 리스크 매트릭스 ' + ai(), '발생 가능성 × 영향도 (1–5, AI 추정) · 오른쪽 위일수록 우선 대응', ch('nRisk', 'h280') +
+      '<div class="risk-list">' + ny.risks.map(function (r, i) { var sc = r.level * r.prob; return '<div><b style="background:' + (sc >= 12 ? T.critical : sc >= 9 ? T.serious : T.warning) + '">' + (i + 1) + '</b><span>' + api.esc(r.name) + '<small>' + api.esc(r.note) + '</small></span>' + api.chips(r.ev) + '</div>'; }).join('') + '</div>');
+    h += card('c6', '우선 추진과제', '기한 순 단계 · 원문의 차년도 착수 업무와 승인 결정', IG().steps(ny.priorities.slice().sort(function (a, b) { return a.due.localeCompare(b.due); }).map(function (x) {
+      return { title: x.title, sub: x.owner + ' · 기한 ' + x.due, extra: '<div style="margin-top:4px">' + api.chips(x.id) + '</div>' };
+    })));
     h += card('c12', 'KPT 회고 (ML-OL-019) ' + src(), '차년도 전략의 입력 데이터', '<div class="kpt">' + ['Keep', 'Problem', 'Try'].map(function (k) {
       return '<div><h5>' + k + '</h5><ul>' + ny.kpt[k].map(function (x) { return '<li>' + api.esc(x) + '</li>'; }).join('') + '</ul></div>';
     }).join('') + '</div>');
     h += '</div>';
     p.innerHTML = h;
     api.bindChips(p);
-    api.chart(el('nKpi'), nextKpiOpt(api, ny.kpis, false));
+    api.chart(el('nKpi'), slopeOpt(api, ny.kpis));
     api.chart(el('nRisk'), {
       grid: { left: 50, right: 30, top: 16, bottom: 44 },
       tooltip: { formatter: function (pp) { var r = pp.data.r; return '<b>' + api.esc(r.name) + '</b><br>가능성 ' + r.prob + ' · 영향 ' + r.level + '<br><span style="color:' + T.muted + '">' + api.esc(r.note) + ' · ' + r.ev + '</span>'; } },
       xAxis: axis(T, { type: 'value', name: '발생 가능성', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: T.muted }, min: 1, max: 5, interval: 1 }),
       yAxis: axis(T, { type: 'value', name: '영향도', nameTextStyle: { color: T.muted }, min: 1, max: 5, interval: 1 }),
-      series: [{ type: 'scatter', symbolSize: 18,
+      series: [{ type: 'scatter',
         data: ny.risks.map(function (r, i) { var sc = r.level * r.prob; return { value: [r.prob + (i % 2 ? 0.08 : -0.08), r.level], r: r, id: r.ev, itemStyle: { color: sc >= 12 ? T.critical : sc >= 9 ? T.serious : T.warning, borderColor: T.surface, borderWidth: 2 } }; }),
-        label: { show: true, position: 'right', color: T.ink2, fontSize: 11, formatter: function (pp) { return short(pp.data.r.name, 12); } },
+        symbolSize: 22, label: { show: true, position: 'inside', color: '#fff', fontSize: 11, fontWeight: 800, formatter: function (pp) { return pp.dataIndex + 1; } },
         markArea: { silent: true, itemStyle: { color: T.critical, opacity: 0.06 }, data: [[{ coord: [3.5, 3.5] }, { coord: [5, 5] }]] } }]
     });
   }
