@@ -888,3 +888,13 @@ button.side-help[aria-current="page"] b { color: var(--accent); }
 .me-title { font-size: 20px; font-weight: 800; letter-spacing: 0.02em; line-height: 1.1; color: var(--ink); }
 .me-sub { font-size: 12px; font-weight: 400; color: var(--ink-2); white-space: nowrap; line-height: 1.3; }
 .me .me-mail { font-weight: 400; }
+/* 간트 상태 필터 */
+.gantt-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 2px 0 6px; }
+.seg-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.gchip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.gchip i { width: 8px; height: 8px; border-radius: 50%; }
+.gchip em { font-style: normal; font-weight: 800; color: var(--ink); }
+.gchip:hover:not(:disabled) { border-color: var(--border-strong); }
+.gchip.on { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.gchip.on em { color: var(--surface); }
+.gchip:disabled { opacity: .45; cursor: default; }

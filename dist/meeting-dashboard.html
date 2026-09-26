@@ -896,6 +896,16 @@ button.side-help[aria-current="page"] b { color: var(--accent); }
 .me-title { font-size: 20px; font-weight: 800; letter-spacing: 0.02em; line-height: 1.1; color: var(--ink); }
 .me-sub { font-size: 12px; font-weight: 400; color: var(--ink-2); white-space: nowrap; line-height: 1.3; }
 .me .me-mail { font-weight: 400; }
+/* 간트 상태 필터 */
+.gantt-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 2px 0 6px; }
+.seg-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.gchip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.gchip i { width: 8px; height: 8px; border-radius: 50%; }
+.gchip em { font-style: normal; font-weight: 800; color: var(--ink); }
+.gchip:hover:not(:disabled) { border-color: var(--border-strong); }
+.gchip.on { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.gchip.on em { color: var(--surface); }
+.gchip:disabled { opacity: .45; cursor: default; }
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
@@ -8063,6 +8073,7 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
   // =====================================================================
   // 04 Action Item
   // =====================================================================
+  var ganttF = '전체';
   function action(p, R, api) {
     var T = api.tokens(), AC = R.actions, s = R.summary;
     if (!AC.length) { p.innerHTML = head('Action Item 관리', '') + empty(); return; }
@@ -8088,7 +8099,12 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
       tile('<b style="color:var(--critical-ink)">⚠</b> 지연', s.delayed, '건', AC.filter(function (a) { return a.delayed; }).map(function (a) { return a.id; }).join(', ')) +
       tile('<i class="dot" style="background:' + ac('미착수') + '"></i>미착수', st['미착수'] || 0, '건', '예정 상태') + '</div>';
     h += '<div class="grid">';
-    h += card('c12', '업무 간트 차트 ' + src(), '지시일(회의일) → 마감일 · 색 = 최종 상태 · ⚠ = 지연 기록 · 막대를 누르면 원문', legend(['완료', '부분완료', '진행중', '미착수'].map(function (k) { return { k: k, c: ac(k) }; }).concat([{ k: '지연', c: ADLY, sym: '⚠' }])) + '<div style="max-height:560px;overflow:auto">' + ch('aGantt', 'h480') + '</div>');
+    var gOpts = [['전체', AC.length]].concat(['완료', '부분완료', '진행중', '미착수'].map(function (k) { return [k, st[k] || 0]; })).concat([['지연', AC.filter(function (a) { return a.delayed; }).length]]);
+    if (!gOpts.some(function (o) { return o[0] === ganttF && o[1]; })) ganttF = '전체';
+    h += card('c12', '업무 간트 차트 ' + src(), '지시한 회의별로 묶어 표시 · 막대 = 지시일 → 마감일 · 오른쪽 = 담당자·마감일 · 위 슬라이더로 기간 확대 · 막대를 누르면 원문',
+      '<div class="gantt-bar"><div class="seg-chips" role="tablist">' + gOpts.map(function (o) {
+        return '<button type="button" class="gchip' + (ganttF === o[0] ? ' on' : '') + '" data-gf="' + o[0] + '"' + (o[1] ? '' : ' disabled') + '>' + (o[0] === '지연' ? '<b style="color:' + ADLY + '">⚠</b>' : o[0] === '전체' ? '' : '<i style="background:' + ac(o[0]) + '"></i>') + o[0] + '<em>' + o[1] + '</em></button>';
+      }).join('') + '</div></div>' + ch('aGantt', 'h480'));
     h += card('c6', '부서별 업무 현황', '담당(공동 포함) 기준 상태별 건수 · 오른쪽 숫자 = 완료율', legend(['완료', '부분완료', '진행중', '미착수'].map(function (k) { return { k: k, c: ac(k) }; })) + '<div id="aDept" class="chart" style="height:330px"></div>');
     h += card('c3', '우선순위 × 상태', '우선순위별 업무 상태', ch('aPrio', 'h360'));
     h += card('c3', '업무 리드타임', '지시일부터 마감일까지 (일)', ch('aLead', 'h360'));
@@ -8102,27 +8118,47 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     p.innerHTML = h;
     api.bindChips(p);
 
-    var rows = AC.slice().reverse();
-    var gEl = el('aGantt'); gEl.style.height = Math.max(240, rows.length * 18 + 44) + 'px';
+    var rows = AC.filter(function (a) { return ganttF === '전체' ? true : ganttF === '지연' ? a.delayed : a.status === ganttF; });
+    var ROWH = 26;
+    var gEl = el('aGantt'); gEl.style.height = Math.max(200, rows.length * ROWH + 86) + 'px';
+    // 지시 회의별 그룹
+    var groups = [];
+    rows.forEach(function (a, i) { var g = groups[groups.length - 1]; if (g && g.m === a.meeting) g.to = i; else groups.push({ m: a.meeting, from: i, to: i }); });
+    var t0 = Math.min.apply(null, rows.map(function (a) { return +new Date(a.start); })), t1 = Math.max.apply(null, rows.map(function (a) { return +new Date(a.due || a.start); }));
+    var md = function (d) { return d ? d.slice(5).replace('-', '.') : '-'; };
     var cg = api.chart(gEl, {
-      grid: { left: 190, right: 30, top: 30, bottom: 10 },
-      tooltip: { formatter: function (pp) { var a = rows[pp.data.value[0]]; return '<b>' + a.id + '</b> · ' + a.status + (a.delayed ? ' · ⚠ 지연' : '') + '<br>' + api.esc(a.task) + '<br><span style="color:' + T.muted + '">' + a.start + ' → ' + a.due + ' · ' + api.esc(a.owners.join(', ')) + '</span>'; } },
-      xAxis: axis(T, { type: 'time', position: 'top', axisLabel: { color: T.muted, fontSize: 10.5, formatter: '{yy}.{MM}' } }),
-      yAxis: axis(T, { type: 'category', data: rows.map(function (a) { return a.id + '  ' + short(a.task, 12); }), axisLine: { show: false }, splitLine: { show: false }, axisLabel: { color: T.ink2, fontSize: 10.5, interval: 0 } }),
+      grid: { left: 250, right: 150, top: 64, bottom: 8 },
+      dataZoom: [{ type: 'slider', xAxisIndex: 0, top: 6, height: 18, filterMode: 'none', showDetail: false, brushSelect: false, borderColor: T.grid, fillerColor: 'rgba(106,149,240,.15)', handleStyle: { color: T.surface, borderColor: '#6a95f0' }, moveHandleSize: 0, dataBackground: { lineStyle: { opacity: 0 }, areaStyle: { opacity: 0 } } },
+        { type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl', moveOnMouseWheel: false, moveOnMouseMove: true }],
+      tooltip: { formatter: function (pp) { var a = pp.data.a; if (!a) return ''; return '<b>' + a.id + '</b> · ' + a.status + (a.delayed ? ' · <span style="color:' + ADLY + '">⚠ 지연</span>' : '') + '<br>' + api.esc(a.task) + '<br><span style="color:' + T.muted + '">' + a.meeting + ' 지시 · ' + a.start + ' → ' + a.due + '<br>담당 ' + api.esc(a.owners.join(', ')) + ' · ' + api.esc(a.priority) + '</span>'; } },
+      xAxis: { type: 'time', position: 'top', min: t0 - 4 * 864e5, max: t1 + 12 * 864e5, splitNumber: 12, axisLine: { show: false }, axisTick: { show: false },
+        splitLine: { show: true, lineStyle: { color: T.grid, type: 'dashed' } }, axisLabel: { color: T.muted, fontSize: 11, hideOverlap: true, formatter: function (v) { var d = new Date(v); return (d.getFullYear() % 100) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + (d.getDate() > 1 ? '.' + ('0' + d.getDate()).slice(-2) : ''); } } },
+      yAxis: { type: 'category', inverse: true, data: rows.map(function (a) { return a.id; }), axisLine: { show: false }, axisTick: { show: false },
+        axisLabel: { interval: 0, align: 'left', margin: 242, formatter: function (v, i) { var a = rows[i], g = groups.filter(function (x) { return x.from === i; })[0]; return (g ? '{m|' + mno(a.meeting) + '}' : '{sp|}') + '{id|' + a.id + '}{t|' + short(a.task, 15) + '}'; },
+          rich: { m: { color: '#fff', backgroundColor: '#6a95f0', borderRadius: 4, fontSize: 10, fontWeight: 700, padding: [2, 5] }, sp: { width: 29 }, id: { color: T.ink, fontWeight: 700, fontSize: 11, width: 50, padding: [0, 0, 0, 8] }, t: { color: T.ink2, fontSize: 11.5, width: 150, overflow: 'truncate', align: 'left' } } } },
       series: [{
-        type: 'custom', encode: { x: [1, 2], y: 0 },
-        renderItem: function (params, apiE) {
-          var i = apiE.value(0), s0 = apiE.coord([apiE.value(1), i]), s1 = apiE.coord([apiE.value(2), i]);
-          var hgt = apiE.size([0, 1])[1] * 0.6, a = rows[i];
-          var w = Math.max(4, s1[0] - s0[0]);
-          var children = [{ type: 'rect', shape: { x: s0[0], y: s0[1] - hgt / 2, width: w, height: hgt, r: 3 }, style: { fill: ac(a.status) } }];
-          if (a.delayed) children.push({ type: 'text', style: { text: '⚠', x: s0[0] + w + 4, y: s0[1] - 6, fill: ADLY, fontSize: 11 } });
-          return { type: 'group', children: children };
+        type: 'custom', silent: true, z: -1, zlevel: 0, clip: false,
+        renderItem: function (params, e) {
+          var g = groups[params.dataIndex], y0 = e.coord([t0, g.from])[1] - ROWH / 2, y1 = e.coord([t0, g.to])[1] + ROWH / 2, cs = params.coordSys;
+          return { type: 'rect', shape: { x: cs.x - 250, y: y0 + 1, width: cs.width + 250 + 150, height: y1 - y0 - 2, r: 8 }, style: { fill: params.dataIndex % 2 ? 'rgba(0,0,0,0)' : T.surface2 } };
         },
-        data: rows.map(function (a, i) { return { value: [i, a.start, a.due || a.start], id: a.id }; })
+        data: groups.map(function (g, i) { return [i]; })
+      }, {
+        type: 'custom', encode: { x: [1, 2], y: 0 }, z: 3, clip: false,
+        renderItem: function (params, e) {
+          var i = e.value(0), s0 = e.coord([e.value(1), i]), s1 = e.coord([e.value(2), i]), a = rows[i], cs = params.coordSys;
+          if (s1[0] < cs.x || s0[0] > cs.x + cs.width) return null;
+          s0 = [Math.max(s0[0], cs.x), s0[1]]; s1 = [Math.min(s1[0], cs.x + cs.width), s1[1]];
+          var hgt = 12, w = Math.max(10, s1[0] - s0[0]), c = ac(a.status);
+          var ch2 = [{ type: 'rect', shape: { x: s0[0], y: s0[1] - hgt / 2, width: w, height: hgt, r: hgt / 2 }, style: { fill: c } },
+            { type: 'text', style: { text: (a.delayed ? '⚠ ' : '') + short(a.owners.join(', '), 10) + ' · ~' + md(a.due), x: s0[0] + w + 7, y: s0[1], verticalAlign: 'middle', fill: a.delayed ? ADLY : T.muted, fontSize: 10.5, fontWeight: a.delayed ? 700 : 400 } }];
+          return { type: 'group', children: ch2 };
+        },
+        data: rows.map(function (a, i) { return { value: [i, a.start, a.due || a.start], id: a.id, a: a }; })
       }]
     });
-    if (cg) cg.on('click', function (e) { api.openEntity(e.data.id); });
+    api.$$('[data-gf]', p).forEach(function (b) { b.addEventListener('click', function () { ganttF = b.dataset.gf; api.render(); }); });
+    if (cg) cg.on('click', function (e) { if (e.data && e.data.id) api.openEntity(e.data.id); });
 
     var SK = ['완료', '부분완료', '진행중', '미착수'];
     var dl = R.depts.filter(function (d) { return d.actions; }).sort(function (a, b) { return b.actions - a.actions; });
