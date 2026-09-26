@@ -176,7 +176,7 @@
 
     // 오른쪽 콜아웃 (지시선 + 라벨)
     var cx = compact ? 0 : P(W, D, 0)[0] + 44;
-    var vbW = compact ? P(W, D, 0)[0] + 20 : cx + 190;
+    var vbW = compact ? P(W, D, 0)[0] + 40 : cx + 190;
     if (!compact) {
       callouts.sort(function (a, b) { return a.at[1] - b.at[1]; });
       var lastY = 10;

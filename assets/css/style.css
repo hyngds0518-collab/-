@@ -671,3 +671,38 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .room-grid .room-item .fl { width: 32px; height: 32px; }
 .room-grid .room-item small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .room-item .cnt { white-space: nowrap; }
+
+/* 소형 캘린더 */
+.mcal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; }
+.mcal > b { font-size: 11px; color: var(--muted); font-weight: 700; padding-bottom: 4px; }
+.mcal > b.sun { color: var(--t-red); } .mcal > b.sat { color: var(--t-blue); }
+.mday { aspect-ratio: 1; max-height: 40px; border-radius: 50%; border: 0; background: none; display: grid; place-items: center; font-size: 12.5px; font-weight: 600; color: var(--ink); margin: 0 auto; width: 100%; max-width: 40px; font-variant-numeric: tabular-nums; position: relative; }
+.mday.out { color: var(--muted); opacity: .45; }
+.mday.has { cursor: pointer; background: var(--t-blue-bg); color: var(--t-blue); font-weight: 800; }
+.mday.has.n-임시 { background: var(--t-orange-bg); color: var(--t-orange); }
+.mday.has.n-긴급 { background: var(--t-red-bg); color: var(--t-red); }
+.mday.has:hover { box-shadow: 0 0 0 2px currentColor inset; }
+.mday.sel { background: var(--accent) !important; color: #fff !important; box-shadow: 0 6px 14px rgba(37, 99, 235, .3); }
+.mday.dim { opacity: .45; }
+.mcal-list { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; display: flex; flex-direction: column; gap: 2px; max-height: 190px; overflow: auto; }
+.mcal-row { display: grid; grid-template-columns: 8px 40px 1fr; gap: 8px; align-items: center; text-align: left; border: 0; background: none; padding: 6px; border-radius: 8px; font-size: 12.5px; }
+.mcal-row:hover { background: var(--surface-2); }
+.mcal-row.on { background: var(--accent-soft); }
+.mcal-row i { width: 8px; height: 8px; border-radius: 50%; background: var(--t-blue); }
+.mcal-row i.n-임시 { background: var(--t-orange); } .mcal-row i.n-긴급 { background: var(--t-red); }
+.mcal-row .d { color: var(--ink-2); font-weight: 700; font-variant-numeric: tabular-nums; }
+.mcal-row .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-grid.sm { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.room-grid.sm .room-item { padding: 6px 8px; grid-template-columns: 28px 1fr auto; gap: 6px; border-radius: 10px; }
+.room-grid.sm .room-item .fl { width: 28px; height: 28px; font-size: 11px; border-radius: 8px; }
+.room-grid.sm .room-item b { font-size: 12px; }
+.room-grid.sm .room-item .cnt { font-size: 15px; }
+.room-grid.sm .room-item .mini { display: none; }
+.plist.compact { max-height: 520px; overflow: auto; margin: 0 -4px; }
+.plist.compact .prow { gap: 10px; padding: 8px 4px; grid-template-columns: auto 1fr auto; }
+.plist.compact .av { width: 36px; height: 36px; }
+.plist.compact .prow b { font-size: 13px; }
+.plist.compact .role { font-size: 11.5px; }
+.plist.compact .right .pill { display: none; }
+.plist.compact .meta span { display: none !important; }
+.room-item .cnt { min-width: max-content; display: flex; align-items: baseline; }
