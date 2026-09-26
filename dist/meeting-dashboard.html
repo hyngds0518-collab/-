@@ -715,6 +715,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .plist.compact .meta span { display: none !important; }
 .room-item .cnt { min-width: max-content; display: flex; align-items: baseline; }
 
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.stack > .card { flex: none; }
+.stack > .card:last-child { flex: 1; }
+.plist.compact.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; max-height: 262px; }
+.plist.compact.two .prow { border-bottom: 1px solid var(--border); }
+@media (max-width: 1180px) { .stack { grid-column: span 12; } }
+@media (max-width: 560px) { .plist.compact.two { grid-template-columns: 1fr; } }
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script>
@@ -7308,22 +7316,22 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     var maxN = plist.length ? plist[0].n : 1;
     h += '<div class="grid">';
     var roomsV = roomsOf(ms), roomArr = Object.keys(roomsV).map(function (k) { return roomsV[k]; }).sort(function (a, b) { return b.list.length - a.list.length; });
-    h += card('c5', '회의 장소 ' + src(), '층별 도면 · 높이·색 = 회의 수 · 공간을 누르면 필터',
-      '<div>' + floorPlanHTML(R, api, true) + '</div><div class="room-grid sm">' + roomArr.map(function (r) {
+    h += card('c7', '회의 장소 ' + src(), '본사 층별 도면 · 높이·색 = 회의 수 · 공간을 누르면 그 장소의 회의만 봅니다',
+      '<div style="flex:1;display:flex;flex-direction:column;justify-content:center">' + floorPlanHTML(R, api, false) + '</div>' + window.Info.floorLegend(T) + '<div class="room-grid">' + roomArr.map(function (r) {
         var on = api.S.f.places.indexOf(r.key) >= 0;
         var avg = Math.round(sum(r.list.map(function (m) { return m.durationMin || 0; })) / r.list.length);
         return '<button type="button" class="room-item' + (on ? ' on' : '') + '" data-place="' + api.esc(r.key) + '"><span class="fl">' + (r.floor ? r.floor + 'F' : '외부') + '</span>' +
           '<span><b>' + api.esc(r.room) + '</b><small>' + api.esc(r.building) + ' · 평균 ' + avg + '분</small><span class="mini">' + r.list.map(function (m) { return '<i title="' + api.esc(m.id + ' ' + m.title) + '" style="background:' + api.natureColor(m.nature) + '"></i>'; }).join('') + '</span></span>' +
           '<span class="cnt">' + r.list.length + '<small style="font-size:11px;margin-left:1px">회</small></span></button>';
       }).join('') + '</div>');
-    h += miniCalendarCard(R, api, 'c4');
-    h += card('c3', '참석자 ' + src(), plist.length + '명 · 참석 횟수 순',
-      '<div class="plist compact">' + plist.map(function (pp) {
+    h += '<div class="c5 stack">' + miniCalendarCard(R, api, '');
+    h += card('', '참석자 ' + src(), plist.length + '명 · 참석 횟수 순 · 누르면 해당 인물이 참석한 회의만 보기',
+      '<div class="plist compact two">' + plist.map(function (pp) {
         return '<div class="prow" data-person="' + api.esc(pp.name) + '" role="button" tabindex="0">' + api.avatar(pp.name) +
           '<div style="min-width:0"><b>' + api.esc(pp.name) + '</b><div class="role">' + api.esc(pp.role) + '</div>' +
           '<div class="meta">참석<em>' + pp.n + '회</em><span style="display:inline-block;width:56px;height:4px;border-radius:2px;background:var(--grid);margin-left:8px;vertical-align:middle;position:relative;overflow:hidden"><i style="position:absolute;inset:0 auto 0 0;width:' + Math.round(pp.n / maxN * 100) + '%;background:var(--good)"></i></span></div></div>' +
           '<div class="right">' + (pp.ch ? '<span class="status st-정기">주재 ' + pp.ch + '</span>' : '') + (pp.rc ? '<span class="pill">기록 ' + pp.rc + '</span>' : '') + '</div></div>';
-      }).join('') + '</div>');
+      }).join('') + '</div>') + '</div>';
     var byNat = A.NATURES.map(function (n) { var l = ms.filter(function (m) { return m.nature === n; }); return { n: n, l: l, avg: l.length ? Math.round(sum(l.map(function (m) { return m.durationMin || 0; })) / l.length) : 0, dec: sum(l.map(function (m) { return m.decisions.length; })) }; });
     h += card('c4', '회의 성격 ' + src(), '회의 1건 = 1칸 · ● 정기 ▲ 임시 ⚠ 긴급', '<div style="padding:4px 0 6px">' + window.Info.waffle(s.byNature.map(function (n) { return { k: n.key, v: n.value, c: api.natureColor(n.key), glyph: api.NATURE_GLYPH[n.key] }; }), { cols: 10, cell: 40, legend: false }) + '</div>' +
       '<div class="nat-rows">' + byNat.map(function (x) {

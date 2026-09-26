@@ -706,3 +706,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .plist.compact .right .pill { display: none; }
 .plist.compact .meta span { display: none !important; }
 .room-item .cnt { min-width: max-content; display: flex; align-items: baseline; }
+
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.stack > .card { flex: none; }
+.stack > .card:last-child { flex: 1; }
+.plist.compact.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; max-height: 262px; }
+.plist.compact.two .prow { border-bottom: 1px solid var(--border); }
+@media (max-width: 1180px) { .stack { grid-column: span 12; } }
+@media (max-width: 560px) { .plist.compact.two { grid-template-columns: 1fr; } }
