@@ -8,12 +8,16 @@
 - `index.html`을 브라우저로 열기 (또는 단일 파일 `dist/meeting-dashboard.html`)
 - 인터넷 연결 필요: 차트(ECharts)와 PDF 업로드(pdf.js)를 CDN에서 불러옵니다.
 
+## 디자인
+
+왼쪽 사이드바 내비게이션, 흰 카드 + 파스텔 아이콘의 라이트 톤(다크 모드 지원). 참석자 프로필은 가상 인물용 일러스트(DiceBear Notionists, CC0)입니다.
+
 ## 구성 (12개 탭)
 
 | 탭 | 내용 |
 |---|---|
-| 개요 | 11개 영역을 항목별 그래프 한 장씩으로 요약 (카드를 누르면 해당 탭으로 이동) |
-| 01 회의 기본정보 | 회의 성격·유형·장소, 부서/참석자 × 회의 매트릭스, 회의 목록 |
+| 개요 | 핵심 KPI, **회의 캘린더**(회의 날짜에 제목 표시 · 날짜 클릭 시 대시보드 전체가 그 회의 기준으로 전환 · 자세히 보기로 회의록 펼침), 부서 요약, 핵심 참여자, 11개 영역 요약 |
+| 01 회의 기본정보 | 참석자 리스트(프로필·역할·참석 횟수), 회의 목록, 성격·유형·장소, 부서/참석자 × 회의 매트릭스 |
 | 02 프로젝트 흐름 | 9단계 타임라인 (● 정기 ▲ 임시 ⚠ 긴급), 단계별 요약 |
 | 03 안건·논의 | 주제 비중, 단계별 주제 변화, 키워드, 부서 간 이견 지도, 반복 이슈 |
 | 04 의사결정 | 확정/조건부/잠정/보류, 승인 레벨, 결정 변경 흐름(구체화·유지·연기·번복) |
@@ -44,6 +48,8 @@ index.html                     대시보드
 assets/js/parser.js            PDF → 구조화 JSON (위치 기반 표 파서, 브라우저/Node 공용)
 assets/js/analytics.js         분류·집계·추적 로직
 assets/js/views.js, app.js     화면 / 필터·업로드·드로어
+assets/js/icons.js             라인 아이콘 (Lucide 기반)
+assets/data/avatars.js         참석자 프로필 일러스트 (scripts/build-avatars.mjs)
 assets/data/base-data.js       기본 회의록 추출 결과 (자동 생성)
 assets/data/ai-annotations.js  AI 분석 레이어
 scripts/build-data.mjs         PDF → base-data.js  (npm i pdfjs-dist 후 실행)

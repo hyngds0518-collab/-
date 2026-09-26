@@ -122,14 +122,13 @@
     var hasUpload = S.uploaded.length > 0;
 
     var h = '';
-    h += '<span class="filter-label">기간</span><span class="fgroup">' +
+    h += '<span class="date-range">' + window.Icons.icon('calendar', 15) +
       '<input type="date" class="date-in" id="fFrom" aria-label="시작일" value="' + esc(f.from) + '" min="' + esc(dates[0] || '') + '" max="' + esc(dates[dates.length - 1] || '') + '">' +
       '<span style="color:var(--muted)">–</span>' +
       '<input type="date" class="date-in" id="fTo" aria-label="종료일" value="' + esc(f.to) + '" min="' + esc(dates[0] || '') + '" max="' + esc(dates[dates.length - 1] || '') + '"></span>';
-    h += '<span class="fsep"></span><span class="filter-label">성격</span><span class="fgroup">' + A.NATURES.map(function (n) {
+    h += '<span class="seg" role="group" aria-label="회의 성격">' + A.NATURES.map(function (n) {
       return '<button type="button" class="chip" data-fk="nature" data-fv="' + n + '" aria-pressed="' + (f.nature.indexOf(n) >= 0) + '"><span class="glyph" style="color:' + natureColor(n) + '">' + NATURE_GLYPH[n] + '</span>' + n + '</button>';
     }).join('') + '</span>';
-    h += '<span class="fsep"></span>';
     h += dd('types', '회의 유형', A.TYPES);
     h += dd('phases', '프로젝트 단계', A.PHASES);
     h += dd('depts', '참석 부서', deptsList);
@@ -139,15 +138,13 @@
       return id.replace(/^.*-(\d+)$/, '$1') + ' · ' + (m ? m.title : '');
     });
     if (hasUpload) h += dd('source', '데이터', ['base', 'upload'], function (v) { return v === 'base' ? '원본 회의록' : '업로드 회의록'; });
-    h += '<input type="search" class="search-in" id="fQ" placeholder="키워드 검색 (예: 품절)" aria-label="키워드 검색" value="' + esc(f.q) + '">';
     h += '<span class="filter-status" id="fStatus"></span>';
     $('#filterBar').innerHTML = h;
     updateFilterStatus();
 
     $('#fFrom').addEventListener('change', function (e) { S.f.from = e.target.value; refresh(); });
     $('#fTo').addEventListener('change', function (e) { S.f.to = e.target.value; refresh(); });
-    var qt;
-    $('#fQ').addEventListener('input', function (e) { clearTimeout(qt); qt = setTimeout(function () { S.f.q = e.target.value.trim(); refresh(); }, 250); });
+    $('#fQ').value = f.q;
     $$('.chip[data-fk]', $('#filterBar')).forEach(function (b) {
       b.addEventListener('click', function () { toggleFilter(b.dataset.fk, b.dataset.fv); refresh(); });
     });
@@ -200,21 +197,26 @@
   function updateFilterStatus() {
     var n = S.R.meetings.length, t = S.all.length;
     var active = S.f.from || S.f.to || S.f.q || ['nature', 'types', 'phases', 'depts', 'people', 'meetings', 'source'].some(function (k) { return S.f[k].length; });
-    $('#fStatus').innerHTML = '<span><b>' + n + '</b> / ' + t + '건</span>' + (active ? '<button type="button" class="link-btn" id="fReset">필터 초기화</button>' : '');
+    var selTxt = S.f.meetings.length === 1 && !S.f.nature.length && !S.f.types.length ? '<span class="sel-banner">' + window.Icons.icon('calendar', 13) + esc(S.f.meetings[0]) + ' 선택됨</span>' : '';
+    $('#fStatus').innerHTML = selTxt + '<span><b>' + n + '</b> / ' + t + '건</span>' + (active ? '<button type="button" class="link-btn" id="fReset">필터 초기화</button>' : '');
     var r = $('#fReset');
     if (r) r.addEventListener('click', function () { S.f = emptyFilters(); refresh(); });
   }
 
   // ---------- 탭 ----------
   var TABS = [
-    ['overview', '개요'], ['basic', '회의 기본정보'], ['flow', '프로젝트 흐름'], ['discussion', '안건·논의'], ['decision', '의사결정'],
-    ['action', '실행 관리'], ['tracking', '성과 추적'], ['kpi', 'KPI 성과'], ['risk', '위기·리스크'], ['dept', '부서 분석'],
-    ['insight', 'AI 인사이트'], ['next', '차년도 기획']
+    ['overview', '개요', 'dashboard', '대시보드'], ['basic', '회의 기본정보', 'file'], ['flow', '프로젝트 흐름', 'route'],
+    ['discussion', '안건·논의', 'chat', '분석'], ['decision', '의사결정', 'gavel'], ['action', '실행 관리', 'list'], ['tracking', '성과 추적', 'target'],
+    ['kpi', 'KPI 성과', 'trend'], ['risk', '위기·리스크', 'shield'], ['dept', '부서 분석', 'users'],
+    ['insight', 'AI 인사이트', 'sparkles', '인사이트'], ['next', '차년도 기획', 'flag']
   ];
   function renderTabs() {
-    $('#tabs').innerHTML = TABS.map(function (t, i) {
-      return '<button type="button" class="tab" role="tab" data-tab="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' +
-        (i ? '<span class="num">' + String(i).padStart(2, '0') + '</span>' : '') + t[1] + '</button>';
+    var I = window.Icons.icon;
+    $('#tabs').innerHTML = TABS.map(function (t) {
+      var cnt = t[0] === 'risk' && S.R ? S.R.summary.crises : t[0] === 'insight' && S.R && S.R.ann ? S.R.ann.insights.length : 0;
+      return (t[3] ? '<div class="nav-sep">' + t[3] + '</div>' : '') +
+        '<button type="button" class="tab" role="tab" data-tab="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' + I(t[2], 18) + '<span>' + t[1] + '</span>' +
+        (cnt ? '<span class="cnt">' + cnt + '</span>' : '') + '</button>';
     }).join('');
     $$('.tab').forEach(function (b) { b.addEventListener('click', function () { go(b.dataset.tab); }); });
   }
@@ -222,7 +224,9 @@
     S.tab = tab; persist();
     $$('.tab').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === tab)); });
     var active = $('.tab[aria-selected="true"]');
-    if (active) active.scrollIntoView({ block: 'nearest', inline: 'center' });
+    if (active && window.innerWidth <= 980) active.scrollIntoView({ block: 'nearest', inline: 'center' });
+    var t = TABS.filter(function (x) { return x[0] === tab; })[0];
+    $('#pageTitle').textContent = t ? t[1] : '';
     renderPanel();
     window.scrollTo({ top: 0 });
   }
@@ -307,23 +311,37 @@
     })[0];
   }
 
+  function meetingSub(m) {
+    return '<span class="nature-tag nature-' + esc(m.nature) + '">' + NATURE_GLYPH[m.nature] + ' ' + esc(m.nature) + '</span>' +
+      m.types.map(function (t) { return '<span class="pill">' + esc(t) + '</span>'; }).join('') +
+      '<span>' + esc(m.datetime) + '</span><span>· ' + esc(m.place) + '</span>' + (m.source === 'upload' ? '<span class="badge-src">업로드</span>' : '');
+  }
   function openMeeting(id, focusId) {
     var m = findMeeting(id);
     if (!m) { toast(id + ' 회의가 현재 데이터에 없습니다'); return; }
-    var sub = '<span class="nature-tag nature-' + esc(m.nature) + '">' + NATURE_GLYPH[m.nature] + ' ' + esc(m.nature) + '</span>' +
-      m.types.map(function (t) { return '<span class="pill">' + esc(t) + '</span>'; }).join('') +
-      '<span>' + esc(m.datetime) + '</span>' + (m.source === 'upload' ? '<span class="badge-src">업로드</span>' : '');
+    openDrawer(m.id + ' · ' + m.title, meetingSub(m), meetingHTML(m));
+    if (focusId) {
+      var el = $('[data-eid="' + focusId + '"]', $('#drawer'));
+      if (el) { el.classList.add('hl'); setTimeout(function () { el.scrollIntoView({ block: 'center' }); }, 60); }
+    }
+  }
+  // 회의록 전체 구조 HTML (드로어·개요 펼침 공용)
+  function meetingHTML(m, wide) {
+    var W = wide ? ' wide' : '';
     var b = '';
+    b += '<div class="dsec' + W + '"><h4>참석자 ' + m.attendees.length + '명</h4><div class="att-list">' + m.attendees.map(function (a) {
+      return '<span class="att">' + avatar(a.name, 'xs') + esc(a.name) + ' <small>' + esc(a.role) + '</small></span>';
+    }).join('') + '</div></div>';
     b += '<div class="dsec"><h4>기본정보</h4><dl class="kv">' +
       kv('회의번호', m.id) + kv('프로젝트 단계', m.stage + ' → ' + m.phase) + kv('장소', m.place) + kv('주재자', m.chair) + kv('기록자', m.recorder) +
       kv('소집 사유', m.reason) + kv('목적', m.purpose) + kv('참석 부서', m.depts.join(' · ')) +
-      kv('참석자', m.attendees.map(function (a) { return a.name + '(' + a.role + ')'; }).join(', ')) + kv('안건', m.agenda.map(function (a, i) { return (i + 1) + '. ' + a; }).join('  ')) +
+      kv('안건', m.agenda.map(function (a, i) { return (i + 1) + '. ' + a; }).join('  ')) +
       '</dl></div>';
     if (m.closedLoop.length) b += '<div class="dsec"><h4>01 이전 실행 성과 피드백</h4>' + m.closedLoop.map(function (c) {
       return '<div class="ditem"><div class="h">' + chips(c.ref) + evalPill(A.evalBucket(c.eval), c.eval) + '</div><p><b>목표</b> ' + esc(c.target) + '</p><p><b>결과</b> ' + esc(c.result) + '</p><p><b>반영</b> ' + esc(c.next) + '</p></div>';
     }).join('') + '</div>';
     b += '<div class="dsec"><h4>02 연계 · 데이터 기준</h4><dl class="kv">' + kv('전 회의 연계', m.link.prev) + kv('이전 Action', m.link.prevActionStatus) + kv('핵심 KPI', m.link.kpi) + kv('데이터 기준', m.link.dataBasis) + '</dl></div>';
-    if (m.discussions.length) b += '<div class="dsec"><h4>03 안건별 논의 · 이견 · 결론</h4>' + m.discussions.map(function (d) {
+    if (m.discussions.length) b += '<div class="dsec' + W + '"><h4>03 안건별 논의 · 이견 · 결론</h4>' + m.discussions.map(function (d) {
       return '<div class="ditem"><div class="h"><b>' + esc(d.topic) + '</b></div><p><b>논의</b> ' + esc(d.discussion) + '</p><p><b>이견·대안</b> ' + esc(d.dissent) + '</p><p><b>결론</b> ' + esc(d.conclusion) + '</p></div>';
     }).join('') + '</div>';
     if (m.decisions.length) b += '<div class="dsec"><h4>04 결정사항</h4>' + m.decisions.map(function (d) {
@@ -343,11 +361,16 @@
       }).join('') + '</div>';
     }
     b += '<div class="dsec"><h4>07 후속 · 08 문서</h4><dl class="kv">' + kv('향후 일정', m.schedule) + kv('후속조치', m.followup) + kv('다음 회의', m.nextMeeting) + kv('참고자료', m.refs) + kv('작성·승인', m.approval) + '</dl></div>';
-    openDrawer(m.id + ' · ' + m.title, sub, b);
-    if (focusId) {
-      var el = $('[data-eid="' + focusId + '"]', $('#drawer'));
-      if (el) { el.classList.add('hl'); setTimeout(function () { el.scrollIntoView({ block: 'center' }); }, 60); }
-    }
+    return b;
+  }
+
+  // 인물 아바타 (일러스트 없으면 이니셜)
+  function avatar(name, size) {
+    var src = (window.AVATARS || {})[name];
+    var cls = 'av' + (size ? ' ' + size : '');
+    if (src) return '<img class="' + cls + '" src="' + src + '" alt="' + esc(name) + '" loading="lazy">';
+    var hue = 0; for (var i = 0; i < String(name).length; i++) hue = (hue * 31 + String(name).charCodeAt(i)) % 360;
+    return '<span class="' + cls + '" style="background:hsl(' + hue + ' 70% 92%);color:hsl(' + hue + ' 45% 35%)">' + esc(String(name).slice(-2)) + '</span>';
   }
   function kv(k, v) { return v ? '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>' : ''; }
 
@@ -506,8 +529,8 @@
   // ---------- 새로 고침 ----------
   function header() {
     var base = S.includeBase ? S.base.length : 0;
-    $('#datasetPill').innerHTML = '<span class="dot" style="background:var(--s1)"></span>원본 ' + base + '건' +
-      (S.uploaded.length ? ' · <span class="dot" style="background:var(--s2)"></span>업로드 ' + S.uploaded.length + '건' : '');
+    $('#datasetPill').innerHTML = '원본 ' + base + '건' + (S.uploaded.length ? ' · 업로드 ' + S.uploaded.length + '건' : '');
+    $('#sideSource').textContent = (S.includeBase ? 'MOMENTLAB 회의록 ' + base + '건' : '원본 제외') + (S.uploaded.length ? ' + 업로드 ' + S.uploaded.length + '건' : '');
     var first = S.all[0], last = S.all[S.all.length - 1];
     var proj = S.includeBase && window.BASE_DATA ? 'MOMENT LAB · MOMENT OAT LATTE 신제품 런칭 프로젝트' : '업로드한 회의록';
     $('#projectLine').textContent = proj + (first ? ' · ' + first.date.replace(/-/g, '.') + ' – ' + last.date.replace(/-/g, '.') : '');
@@ -517,7 +540,7 @@
     if (!keepBar) renderFilterBar(); else updateFilterStatus();
     renderPanel();
   }
-  function fullRefresh() { recompute(); header(); renderFilterBar(); renderPanel(); }
+  function fullRefresh() { recompute(); header(); renderFilterBar(); renderTabs(); if (S.tab) go(S.tab); }
 
   // 뷰에서 쓰는 공용 API
   var API = {
@@ -525,12 +548,23 @@
     chips: chips, bindChips: bindChips, evalColor: evalColor, evalPill: evalPill, decisionColor: decisionColor, decisionPill: decisionPill,
     actionColor: actionColor, actionPill: actionPill, natureColor: natureColor, NATURE_GLYPH: NATURE_GLYPH, uniq: uniq, $: $, $$: $$,
     setFilter: function (k, v) { S.f = emptyFilters(); if (Array.isArray(S.f[k])) S.f[k] = [].concat(v); else S.f[k] = v; refresh(); },
+    selectMeetings: function (ids) { S.f = emptyFilters(); S.f.meetings = [].concat(ids || []); refresh(); },
+    render: renderPanel, avatar: avatar, meetingHTML: meetingHTML, meetingSub: meetingSub, findMeeting: findMeeting, icon: window.Icons.icon,
     toast: toast
   };
   window.DashboardAPI = API;
 
+  // 정적 아이콘
+  var I = window.Icons.icon;
+  $('#searchIcon').outerHTML = I('search', 17);
+  $('#upIcon').outerHTML = I('upload', 16);
+  $('#btnExport').innerHTML = I('download', 18);
+  $('#btnTheme').innerHTML = I('moon', 18);
+  $('#sideHelpIcon').innerHTML = I('file', 18);
+  $('#promoArt').innerHTML = '<span class="ic-wrap lg tone-green" style="box-shadow:0 8px 18px rgba(22,163,74,.18)">' + I('shieldCheck', 28) + '</span>';
+  var qt;
+  $('#fQ').addEventListener('input', function (e) { clearTimeout(qt); qt = setTimeout(function () { S.f.q = e.target.value.trim(); refresh(true); }, 250); });
+
   // 시작
   fullRefresh();
-  renderTabs();
-  go(S.tab);
 })();
