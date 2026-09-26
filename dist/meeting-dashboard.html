@@ -8559,7 +8559,10 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
       '<div class="sv"><h5>인사이트 (Insight)</h5><p>“UGC 소재 CTR이 설명형의 2.3배 → 다음 캠페인은 UGC 비중 확대가 필요하다.” — 여러 회의를 교차해 패턴·원인·행동을 도출한 것</p></div></div>';
     if (cur.length) {
       h += '<div class="panel-head" style="margin-top:6px"><div><h2 style="font-size:16px">원문 교차 분석 인사이트 ' + ai() + '</h2><p>전체 회의록 기준 · ' + cur.length + '개</p></div></div>';
-      h += '<div class="insights mini">' + cur.map(function (i, k) { return insCard(i, api, k); }).join('') + '</div>';
+      api.uniq(cur.map(function (i) { return i.cat; })).forEach(function (c) {
+        h += '<div style="margin:14px 0 8px;font-size:13px;font-weight:800">' + api.esc(c) + '</div><div class="insights mini">' +
+          cur.map(function (i, k) { return i.cat === c ? insCard(i, api, k) : ''; }).join('') + '</div>';
+      });
     }
     h += '<div class="panel-head" style="margin-top:22px"><div><h2 style="font-size:16px">필터 반영 자동 인사이트 ' + ai('규칙 기반') + '</h2><p>현재 선택한 회의 ' + R.meetings.length + '건으로 실시간 계산 · 업로드한 회의록에도 적용됩니다</p></div></div>';
     h += auto.length ? '<div class="insights mini">' + auto.map(function (i, k) { return insCard(i, api, cur.length + k); }).join('') + '</div>' : empty();
