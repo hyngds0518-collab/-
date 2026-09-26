@@ -1315,7 +1315,7 @@
       tile('미달', L.filter(function (l) { return l.eval === '미달'; }).length, '건', '') +
       tile('수치화된 지표 ' + (R.ann ? ai('AI') : ''), mets.length, '개', '평균 달성률 ' + (mets.length ? Math.round(sum(mets.map(function (m) { return Math.min(m.rate, 200); })) / mets.length) : 0) + '%') + '</div>';
     h += '<div class="grid">';
-    h += card('c4', '평가 결과 분포 ' + src(), '목표 1개 = 1칸 · 원문의 달성평가 표기를 정규화', '<div id="tEval" style="margin-top:8px"></div>');
+    h += card('c4', '평가 결과 분포 ' + src(), '원문의 달성평가 표기를 정규화', ch('tEval', 'h280'));
     h += card('c8', '목표 → 결과 → 다음 실행 ' + ai(), '추적 대상(결정·업무·이슈)이 어떤 결과를 거쳐 어떤 후속 조치로 이어졌나', ch('tSankey', 'h280'));
     h += card('c12', '지표별 목표 대비 달성률 (덤벨) ' + (R.ann ? ai() : ai('자동 추출')), '회색 점 = 목표(100%) → 색 점 = 실제 달성률 · 낮을수록 좋은 지표는 역산 · 점을 누르면 해당 회의',
       legend([{ k: '달성 (≥100%)', c: T.good }, { k: '주의 (95–100%)', c: T.warning }, { k: '미달 (<95%)', c: T.critical }]) + (mets.length ? ch('tMet', 'h480') : empty('수치형 목표를 찾지 못했습니다')));
@@ -1340,7 +1340,8 @@
     api.bindChips(p);
 
     var le = s.loopByEval.filter(function (e) { return e.value; });
-    el('tEval').innerHTML = IG().waffle(le.map(function (e) { return { k: e.key, v: e.value, c: api.evalColor(e.key) }; }), { cols: 8 });
+    api.chart(el('tEval'), donutOpt(api, le.map(function (e) { return { k: e.key, value: e.value, c: api.evalColor(e.key) }; }), L.length, '목표'));
+    addLegendRight(el('tEval'), le.map(function (e) { return { k: e.key + ' ' + e.value, c: api.evalColor(e.key) }; }));
 
     // 생키: 추적 대상 유형 → 평가 → 다음 실행
     var kindOf = function (ref) { return /^D-/.test(ref) ? '결정(D)' : /^A-/.test(ref) ? '업무(A)' : /^OI-/.test(ref) ? '이슈(OI)' : '프로젝트 KPI'; };
@@ -1420,10 +1421,15 @@
       return { k: k, last: last, prev: prev, r: r, st: stt, delta: delta, good: good, basis: (m && m.link.dataBasis) || last.basis || '' };
     });
     if (!kpiSel || !ks.some(function (k) { return k.key === kpiSel; })) kpiSel = ks[0].key;
-    h += gaugeGrid(api, cards.map(function (c) {
-      return { key: c.k.key, on: kpiSel === c.k.key, name: c.k.name, r: c.r, state: c.st, sub: api.fmt(c.last.actual, 2) + c.k.unit + ' / ' + api.fmt(c.last.target, 2) + c.k.unit,
-        foot: '<span>' + (c.delta == null ? '이전 시점 없음' : '이전 대비 <span class="' + (c.good ? 'delta-up' : 'delta-down') + '">' + (c.delta > 0 ? '▲ +' : '▼ ') + api.fmt(c.delta, 2) + '</span>') + '</span><span>' + api.esc(c.last.label) + '</span>' };
-    }), { width: 170 });
+    h += '<div class="kpis">' + cards.map(function (c) {
+      var w = Math.min(100, c.r / 1.3);
+      return '<div class="kpi" role="button" tabindex="0" data-k="' + c.k.key + '" aria-pressed="' + (kpiSel === c.k.key) + '"><div class="name"><span>' + api.esc(c.k.name) + '</span><span class="st" style="color:' + stateColor(T, c.st) + '">' + stateIcon(c.st) + ' ' + c.st + '</span></div>' +
+        '<div class="val">' + api.fmt(c.last.actual, 2) + '<small>' + c.k.unit + '</small></div>' +
+        '<div class="bar"><i style="width:' + w + '%;background:' + stateColor(T, c.st) + '"></i><em style="left:' + (100 / 1.3) + '%"></em></div>' +
+        '<div class="row"><span>목표 ' + api.fmt(c.last.target, 2) + c.k.unit + ' · 달성률 <b>' + Math.round(c.r * 10) / 10 + '%</b></span></div>' +
+        '<div class="row"><span>' + (c.delta == null ? '이전 시점 없음' : '이전 대비 <span class="' + (c.good ? 'delta-up' : 'delta-down') + '">' + (c.delta > 0 ? '▲ +' : '▼ ') + api.fmt(c.delta, 2) + c.k.unit + '</span>') + '</span><span>' + api.esc(c.last.label) + '</span></div>' +
+        '<div class="row"><span class="note" style="margin:0">기준: ' + api.esc(short(c.basis, 28)) + '</span></div></div>';
+    }).join('') + '</div>';
     h += '<div class="grid" style="margin-top:14px">';
     h += card('c7', '목표 대비 편차 ' + ai(), '0 = 목표 · 오른쪽 초과 / 왼쪽 미달 (최근 시점 기준, 낮을수록 좋은 지표는 역산)', ch('kBullet', 'h320'));
     h += card('c5', '<span id="kSelTitle"></span> 추이 ' + ai(), '막대 = 실제 · 선 = 해당 시점 목표', ch('kTrend', 'h320'));
@@ -1440,8 +1446,8 @@
     h += '</div>';
     p.innerHTML = h;
     api.bindChips(p);
-    api.$$('.gauge-cell[data-k]', p).forEach(function (c) {
-      var fn = function () { kpiSel = c.dataset.k; api.$$('.gauge-cell[data-k]', p).forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); }); drawTrend(); };
+    api.$$('.kpi[data-k]', p).forEach(function (c) {
+      var fn = function () { kpiSel = c.dataset.k; api.$$('.kpi[data-k]', p).forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); }); drawTrend(); };
       c.addEventListener('click', fn); c.addEventListener('keydown', function (e) { if (e.key === 'Enter') fn(); });
     });
     var gaps = cards.slice().sort(function (a, b) { return (b.r - 100) - (a.r - 100); });
