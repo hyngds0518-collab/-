@@ -862,6 +862,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .ins-fix h4 svg { width: 16px; height: 16px; }
 .ins-fix ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 .ins-fix li { font-size: 13.5px; line-height: 1.6; color: var(--ink); }
+/* 탭 상단 요약 인사이트 */
+.brief { display: flex; gap: 14px; align-items: flex-start; padding: 14px 18px; margin: 0 0 16px; border-radius: var(--radius); background: linear-gradient(100deg, var(--t-blue-bg), var(--surface) 70%); border: 1px solid var(--border); box-shadow: var(--shadow); }
+.brief-ic { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--surface); color: var(--accent); box-shadow: 0 0 0 1px var(--border); }
+.brief-ic svg { width: 18px; height: 18px; }
+.brief-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.brief-body > b { font-size: 12px; color: var(--accent); letter-spacing: .02em; }
+.brief-body p { margin: 0; font-size: 13.5px; line-height: 1.65; color: var(--ink-2); }
+.brief-body p b { color: var(--ink); font-weight: 700; }
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
@@ -6859,6 +6867,14 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
   function onClickMeeting(c, api) {
     if (c) c.on('click', function (p) { var id = p.data && (p.data.mid || p.data.id); if (id && /^ML|^[A-Z]+-[A-Z]+-\d+/.test(id)) api.openMeeting(id); else if (id) api.openEntity(id); });
   }
+  // 탭 상단 요약 코멘트 (두 줄)
+  function brief(lines) {
+    lines = lines.filter(Boolean);
+    if (!lines.length) return '';
+    return '<div class="brief"><span class="brief-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg></span><div class="brief-body"><b>요약 인사이트</b>' +
+      lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') + '</div></div>';
+  }
+  function bb(x) { return '<b>' + String(x).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }) + '</b>'; }
   function pctTxt(v) { return (Math.round(v * 10) / 10) + '%'; }
   function sum(a) { return a.reduce(function (s, v) { return s + v; }, 0); }
   // 도면: 전체 회의 기준 공간 목록 (필터와 무관하게 건물 형태 유지)
@@ -7744,6 +7760,16 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     var pairs = Object.keys(R.conflictPairs).map(function (k) { return { k: k.split('|'), v: R.conflictPairs[k] }; }).sort(function (a, b) { return b.v - a.v; });
     var agendaN = sum(ms.map(function (m) { return m.agenda.length; }));
     var h = head('안건 및 논의 분석', '회의록의 안건별 논의·이견·결론 텍스트를 AI 규칙으로 분류해 "무엇을 얼마나 이야기했는지"를 수치화했습니다.');
+    (function () {
+      var ts = R.topicShare, dis = ds.filter(function (d) { return d.hasDissent; }).length;
+      var adopt = ds.filter(function (d) { return d.resolution === '채택'; }).length;
+      var cp = Object.keys(R.conflictPairs).sort(function (a, b) { return R.conflictPairs[b] - R.conflictPairs[a]; })[0];
+      var cpn = cp ? cp.split('|').map(function (x) { return A.DEPT_SHORT[x] || x; }).join(' ↔ ') : '';
+      h += brief([
+        '논의 ' + ds.length + '건 중 ' + bb(ts[0].key + ' ' + ts[0].pct + '%') + (ts[1] ? '·' + ts[1].key + ' ' + ts[1].pct + '%' : '') + ' 주제가 가장 많았고, 결론이 조건부·절충·보류로 남은 논의는 ' + bb((ds.length - adopt) + '건(' + Math.round((ds.length - adopt) / ds.length * 100) + '%)') + '입니다.',
+        (cp ? '가장 자주 부딪힌 부서는 ' + bb(cpn + ' ' + R.conflictPairs[cp] + '건') + '입니다. ' : '') + (recurring.length ? '2회 이상 반복된 이슈 ' + bb(recurring.length + '건') + '은 회의 전 사전 정리가 필요합니다.' : '')
+      ]);
+    })();
     h += '<div class="tiles">' + tile('안건', agendaN, '개', '회의당 ' + Math.round(agendaN / ms.length * 10) / 10 + '개') + tile('논의 기록', ds.length, '건', '이견·대안 포함') +
       tile('최다 주제', R.topicShare[0].key, '', R.topicShare[0].pct + '%') + tile('반복 이슈', recurring.length, '건', '2회 이상 등장') +
       tile('보류·연기된 논의', ds.filter(function (d) { return d.resolution === '보류·연기'; }).length, '건', '결론 유형 AI 분류') + '</div>';
@@ -7888,6 +7914,14 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     var withCond = D.filter(function (d) { return d.conditional; }).length;
     var lvl = { '대표·긴급 승인': 0, '팀 확정': 0 }; D.forEach(function (d) { lvl[d.level]++; });
     var h = head('의사결정 현황', 'Decision Register를 모아 결정 상태·승인 레벨·조건·결정 간 변경 흐름을 추적합니다.');
+    (function () {
+      var nc = D.length - (byS['확정'] || 0);
+      var rm = R.meetings.map(function (m) { return { m: m, n: m.reserved && !/^없음/.test(m.reserved) ? m.reserved.split(/,|·|\//).filter(function (x) { return x.trim().length > 1; }).length : 0 }; }).sort(function (a, b) { return b.n - a.n; })[0];
+      h += brief([
+        '결정 ' + D.length + '건 중 ' + bb(Math.round((byS['확정'] || 0) / D.length * 100) + '%') + '가 확정됐고, 조건부·잠정·보류 ' + bb(nc + '건') + '은 조건 충족 여부를 후속 회의에서 확인해야 합니다.',
+        (rev.length ? '앞선 결정이 뒤집힌 번복은 ' + bb(rev.length + '건') + '(' + rev.slice(0, 2).map(function (l) { return l.from + '→' + l.to; }).join(', ') + ')이고, ' : '번복된 결정은 없고, ') + '대표·긴급 승인은 ' + lvl['대표·긴급 승인'] + '건입니다.' + (rm && rm.n ? ' 유보사항은 ' + bb(rm.m.id + ' ' + rm.n + '건') + '으로 가장 많았습니다.' : '')
+      ]);
+    })();
     h += '<div class="tiles t7">' + tile('총 의사결정', D.length, '건', R.meetings.length + '개 회의') +
       ['확정', '조건부', '잠정', '보류'].map(function (k) { return tile('<i class="dot" style="background:' + api.decisionColor(k) + '"></i>' + k, byS[k] || 0, '건', pctTxt((byS[k] || 0) / D.length * 100)); }).join('') +
       tile('<b style="color:var(--critical-ink)">↺</b> 번복·변경', rev.length, '건', rev.map(function (l) { return l.from + '→' + l.to; }).join(', ') || '감지되지 않음') +
@@ -8003,6 +8037,14 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     var lead = AC.filter(function (a) { return a.due; }).map(function (a) { return Math.round((new Date(a.due) - new Date(a.start)) / 86400000); });
     var avgLead = lead.length ? Math.round(sum(lead) / lead.length) : 0;
     var h = head('Action Item 관리', '업무지시사항을 담당자·부서·마감일로 구조화하고, 다음 회의의 "이전 Action 상태" 기록으로 실제 완료 여부를 추적합니다.');
+    (function () {
+      var dl = AC.filter(function (a) { return a.delayed; });
+      var worst = R.depts.filter(function (d) { return d.actions >= 3; }).sort(function (a, b) { return a.doneRate - b.doneRate; })[0];
+      h += brief([
+        '업무 ' + AC.length + '건 중 ' + bb((st['완료'] || 0) + '건(' + Math.round((st['완료'] || 0) / AC.length * 100) + '%)') + '이 완료됐고, 지연 기록은 ' + bb(dl.length + '건') + (dl.length ? '(' + dl.map(function (a) { return a.id; }).join(', ') + ')' : '') + '입니다.',
+        (worst ? '완료율이 가장 낮은 부서는 ' + bb(worst.dept + ' ' + worst.doneRate + '%') + '이고, ' : '') + '지시부터 마감까지 평균 ' + bb(avgLead + '일') + '이 주어졌습니다. 진행중·미착수 ' + ((st['진행중'] || 0) + (st['미착수'] || 0)) + '건은 다음 회의에서 상태 확인이 필요합니다.'
+      ]);
+    })();
     h += '<div class="tiles">' + tile('전체 업무', AC.length, '건', '평균 리드타임 ' + avgLead + '일') +
       tile('<i class="dot" style="background:' + ac('완료') + '"></i>완료', st['완료'] || 0, '건', pctTxt((st['완료'] || 0) / AC.length * 100)) +
       tile('<i class="dot" style="background:' + ac('부분완료') + '"></i>부분완료', st['부분완료'] || 0, '건', '후속 회의 기록 기준') +
@@ -8107,6 +8149,15 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     var ok = L.filter(function (l) { return l.eval === '달성' || l.eval === '초과' || l.eval === '달성(주의)'; }).length;
     var cmp = R.ann ? R.ann.comparisons : null;
     var h = head('이전 회의 → 현재 회의 성과 추적', '각 회의가 이전 회의의 결정(D)·업무(A)·이슈(OI) 목표를 실제 결과와 비교한 Closed Loop 기록입니다. 달성률은 수치 목표를 정규화해 계산했습니다.');
+    (function () {
+      var bad = L.filter(function (l) { return l.eval === '미달'; });
+      var part = L.filter(function (l) { return /부분|혼합/.test(l.eval); }).length;
+      var avg = mets.length ? Math.round(sum(mets.map(function (m) { return m.rate; })) / mets.length) : 0;
+      h += brief([
+        '이전 회의 목표 ' + L.length + '건 중 ' + bb(ok + '건(' + Math.round(ok / L.length * 100) + '%)') + '을 달성했고, 부분달성·혼합 ' + part + '건, 미달 ' + bb(bad.length + '건') + '입니다.',
+        (mets.length ? '수치화된 지표 ' + mets.length + '개의 평균 달성률은 ' + bb(avg + '%') + '입니다. ' : '') + (bad.length ? '미달 목표(' + bad.slice(0, 3).map(function (l) { return api.esc(l.ref); }).join(', ') + (bad.length > 3 ? ' 외' : '') + ')는 원인과 보완 조치를 다음 회의에 남겨야 합니다.' : '미달 목표 없이 계획대로 진행됐습니다.')
+      ]);
+    })();
     h += '<div class="tiles">' + tile('추적한 목표', L.length, '건', '기준선 설정 제외') +
       tile('달성', ok, '건', pctTxt(ok / L.length * 100)) +
       tile('부분달성·혼합', L.filter(function (l) { return l.eval === '부분달성' || l.eval === '혼합'; }).length, '건', '') +
@@ -8218,6 +8269,15 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
       var m = meetingById(R, last.m);
       return { k: k, last: last, prev: prev, r: r, st: stt, delta: delta, good: good, basis: (m && m.link.dataBasis) || last.basis || '' };
     });
+    (function () {
+      var n = { '달성': 0, '주의': 0, '미달': 0 }; cards.forEach(function (c) { n[c.st]++; });
+      var srt = cards.slice().sort(function (a, b) { return b.r - a.r; }), hi = srt[0], lo = srt[srt.length - 1];
+      var weak = cards.filter(function (c) { return c.st !== '달성'; }).map(function (c) { return c.k.name; });
+      h += brief([
+        'KPI ' + cards.length + '개 중 ' + bb('달성 ' + n['달성'] + '개') + ', 주의 ' + n['주의'] + '개, 미달 ' + n['미달'] + '개입니다. ' + (weak.length ? '목표에 못 미친 지표는 ' + bb(weak.join('·')) + '입니다.' : '모든 지표가 목표를 넘었습니다.'),
+        '가장 크게 초과한 지표는 ' + bb(hi.k.name + ' ' + Math.round(hi.r) + '%') + ', 가장 부족한 지표는 ' + bb(lo.k.name + ' ' + (Math.round(lo.r * 10) / 10) + '%') + '로, 차년도 목표 설정 시 우선 보완 대상입니다.'
+      ]);
+    })();
     if (!kpiSel || !ks.some(function (k) { return k.key === kpiSel; })) kpiSel = ks[0].key;
     h += '<div class="kpis">' + cards.map(function (c) {
       var w = Math.min(100, c.r / 1.3);
@@ -8301,6 +8361,15 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     var types = api.uniq(C.map(function (c) { return c.type; }));
     var typeCol = function (t) { return T.s[['생산·품질', '재고·유통', '커뮤니케이션', '기타'].indexOf(t)] || T.s[4]; };
     var h = head('위기·리스크 관리', '긴급회의의 위기관리(05A) 섹션과 미결 이슈(05) 기록을 발생 → 대응 → 해결 → 예방 흐름으로 재구성했습니다.');
+    (function () {
+      var rs = C.filter(function (c) { return c.resolved; });
+      var avgD = rs.length ? Math.round(sum(rs.map(function (c) { return c.daysToResolve; })) / rs.length) : 0;
+      var closed = I.filter(function (i) { return i.status === '종결'; }).length;
+      h += brief([
+        C.length ? '긴급 위기 ' + bb(C.length + '건') + '(' + C.map(function (c) { return c.type; }).join(', ') + ') 중 ' + rs.length + '건이 해결됐고, 해결까지 평균 ' + bb(avgD + '일') + '이 걸렸습니다.' : '선택한 회의에는 긴급 위기 기록이 없습니다.',
+        I.length ? '미결 이슈 ' + I.length + '건 중 종결은 ' + closed + '건뿐이고, ' + bb(R.summary.untrackedIssues + '건') + '은 종결 기록 없이 회의록에서 사라져 종결 조건 관리가 필요합니다.' : ''
+      ]);
+    })();
     h += '<div class="tiles">' + tile('위기', C.length, '건', types.map(function (t) { return t + ' ' + C.filter(function (c) { return c.type === t; }).length; }).join(' · ') || '없음') +
       tile('해결', C.filter(function (c) { return c.resolved; }).length, '건', '종결 기준 충족') +
       tile('재발', C.filter(function (c) { return c.recurred; }).length, '건', '같은 유형 재발생') +
@@ -8410,6 +8479,17 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     if (!D.length) { p.innerHTML = head('부서별 업무 분석', '') + empty(); return; }
     var top = R.edges.slice(0, 5);
     var h = head('부서별 업무 분석', '참석 기록·업무 담당·논의 언급을 부서 단위로 합쳐 참여도·실행력·협업 관계를 봅니다.');
+    (function () {
+      var inner = D.filter(function (d) { return !/외부|대표/.test(d.dept); });
+      var pm = inner.slice().sort(function (a, b) { return b.meetings - a.meetings; })[0];
+      var pa = inner.slice().sort(function (a, b) { return b.actions - a.actions; })[0];
+      var lw = D.filter(function (d) { return d.actions >= 3; }).sort(function (a, b) { return a.doneRate - b.doneRate; })[0];
+      var e = R.edges[0];
+      h += brief([
+        '회의 참여는 ' + bb(pm.dept + ' ' + pm.meetings + '회') + ', 업무 담당은 ' + bb(pa.dept + ' ' + pa.actions + '건') + '으로 가장 많아 프로젝트를 주도했습니다.',
+        (lw ? '완료율이 가장 낮은 부서는 ' + bb(lw.dept + ' ' + lw.doneRate + '%') + '이고, ' : '') + (e ? '가장 긴밀한 협업은 ' + bb((A.DEPT_SHORT[e.a] || e.a) + ' ↔ ' + (A.DEPT_SHORT[e.b] || e.b)) + '(협업 강도 ' + e.weight + ')입니다.' : '')
+      ]);
+    })();
     h += '<div class="grid">';
     h += card('c7', '부서 협업 네트워크 ' + ai(), '선 굵기 = 협업 강도 (공동 업무 ×2 + 같은 논의에서 함께 언급) · 원 크기 = 활동량 · 부서를 가리키면 연결만 강조',
       legend([{ k: '공동 업무 있음', c: T.s[0] }, { k: '논의만 함께', c: T.axis }, { k: '외부 조직', c: T.neutral }]) + ch('dNet', 'h420'));
