@@ -7662,83 +7662,99 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
   // =====================================================================
   function discussion(p, R, api) {
     var T = api.tokens(), ds = R.discussions, ms = R.meetings;
+    // 차트마다 다른 파스텔 톤
+    var PAS = {
+      topic: ['#8fa8f7', '#9db2f8', '#abbdf9', '#b9c8fa', '#c6d2fb', '#d2dcfc', '#dee5fd', '#e9eefe'],
+      phase: [T.surface2, '#d9f4ee', '#b3e9dc', '#86d9c5', '#5fc7ad'],
+      kw: ['#efe9fd', '#e0d6fb', '#cdbdf7', '#b8a2f2', '#a38aec'],
+      flow: [T.surface2, '#ffe8d6', '#fdd0ae', '#f9b382'],
+      res: ['#a9c4fb', '#9fdcc2', '#f9d58c', '#d3d8e2'],
+      recur: '#f6b3a4'
+    };
+    var pasInk = '#334155';
     if (!ds.length) { p.innerHTML = head('안건 및 논의 분석', '') + empty(); return; }
-    var I = window.Icons;
     var resKeys = ['채택', '조건부 채택', '절충', '보류·연기'];
-    var resCol = [T.s[0], T.s[2], T.s[3], T.neutral];
+    var resCol = PAS.res;
     var recurring = R.issues.filter(function (i) { return i.mentions >= 2; }).sort(function (a, b) { return b.mentions - a.mentions; });
     var pairs = Object.keys(R.conflictPairs).map(function (k) { return { k: k.split('|'), v: R.conflictPairs[k] }; }).sort(function (a, b) { return b.v - a.v; });
     var agendaN = sum(ms.map(function (m) { return m.agenda.length; }));
-    var topics = A.TOPICS;
-    var tcol = function (k) { var i = topics.indexOf(k); return T.s[i >= 0 ? i : 0]; };
-    var ts = R.topicShare;
     var h = head('안건 및 논의 분석', '회의록의 안건별 논의·이견·결론 텍스트를 AI 규칙으로 분류해 "무엇을 얼마나 이야기했는지"를 수치화했습니다.');
     h += '<div class="tiles">' + tile('안건', agendaN, '개', '회의당 ' + Math.round(agendaN / ms.length * 10) / 10 + '개') + tile('논의 기록', ds.length, '건', '이견·대안 포함') +
-      tile('최다 주제', ts[0].key, '', ts[0].pct + '%') + tile('반복 이슈', recurring.length, '건', '2회 이상 등장') +
+      tile('최다 주제', R.topicShare[0].key, '', R.topicShare[0].pct + '%') + tile('반복 이슈', recurring.length, '건', '2회 이상 등장') +
       tile('보류·연기된 논의', ds.filter(function (d) { return d.resolution === '보류·연기'; }).length, '건', '결론 유형 AI 분류') + '</div>';
     h += '<div class="grid">';
-    h += card('c5', '가장 많이 논의된 주제 ' + ai(), '1위 <b style="color:' + tcol(ts[0].key) + '">' + ts[0].key + ' ' + ts[0].pct + '%</b> · 2위 ' + ts[1].key + ' ' + ts[1].pct + '% · 3위 ' + ts[2].key + ' ' + ts[2].pct + '%', ch('dTopic', 'h320'));
-    h += card('c7', '단계별 논의 주제 변화 ' + ai(), '단계마다 주제 비중이 어떻게 바뀌었나 (100% 누적 영역)', ch('dTopicPhase', 'h320'));
-    h += card('c7', '주요 키워드 ' + ai(), '워드 클라우드 · 글자 크기 = 언급 수 · 색 = 주제 · 누르면 그 키워드로 검색', '<div id="dKw" class="wcloud"></div>');
-    h += card('c5', '키워드 흐름', '상위 키워드의 회의별 언급 (막대 1개 = 회의 1건)', '<div id="dKwTrend" class="spark-rows"></div>');
+    var ts = R.topicShare;
+    h += card('c5', '가장 많이 논의된 주제 ' + ai(), '1위 <b style="color:var(--ink)">' + ts[0].key + ' ' + ts[0].pct + '%</b> · 2위 ' + ts[1].key + ' ' + ts[1].pct + '% · 3위 ' + ts[2].key + ' ' + ts[2].pct + '%', ch('dTopic', 'h320'));
+    h += card('c7', '단계별 논의 주제 변화 ' + ai(), '진할수록 해당 단계에서 많이 논의됨 (주제 점유율 %)', ch('dTopicPhase', 'h320'));
+    h += card('c7', '주요 키워드 ' + ai(), '원문 전체에서 등장 빈도 · 크기 = 언급 수', ch('dKw', 'h360'));
+    h += card('c5', '키워드 흐름', '상위 키워드의 회의별 언급 추이', ch('dKwTrend', 'h360'));
     h += card('c6', '부서 간 이견 ' + ai(), '같은 안건에서 의견이 갈린 부서 쌍 · 많이 부딪힌 순', '<div id="dConflict" class="pairs"></div>');
-    h += card('c3', '이견의 결론 방식 ' + ai(), '논의 1건 = 1칸', '<div id="dRes" style="margin-top:6px"></div>');
-    h += card('c3', '반복적으로 등장한 이슈 ' + src(), '점 1개 = 회의 1회 등장 · 색 = 당시 상태', recurring.length ? ch('dRecur', 'h360') : empty('2회 이상 등장한 이슈가 없습니다'));
+    h += card('c3', '이견의 결론 방식 ' + ai(), '이견이 어떻게 정리됐나', ch('dRes', 'h320'));
+    h += card('c3', '반복적으로 등장한 이슈 ' + src(), '미결 이슈가 회의록에 등장한 횟수', recurring.length ? ch('dRecur', 'h360') : empty('2회 이상 등장한 이슈가 없습니다'));
     h += card('c12', '안건별 논의 · 이견 · 결론', '',
       '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>회의</th><th>안건</th><th>주제</th><th>관련 부서</th><th>핵심 논의</th><th>이견·대안</th><th>결론</th><th>결론 방식</th></tr></thead><tbody>' +
       ds.map(function (d) {
-        return '<tr><td>' + api.chips(d.meeting) + '</td><td><b>' + api.esc(d.topic) + '</b></td><td><span class="pill" style="background:' + tcol(d.category) + '1f;color:' + tcol(d.category) + '">' + d.category + '</span></td><td>' + d.depts.map(function (x) { return A.DEPT_SHORT[x] || x; }).join(', ') + '</td>' +
+        return '<tr><td>' + api.chips(d.meeting) + '</td><td><b>' + api.esc(d.topic) + '</b></td><td><span class="pill">' + d.category + '</span></td><td>' + d.depts.map(function (x) { return A.DEPT_SHORT[x] || x; }).join(', ') + '</td>' +
           '<td class="clip">' + api.esc(d.discussion) + '</td><td class="clip">' + api.esc(d.dissent) + '</td><td class="clip">' + api.esc(d.conclusion) + '</td><td>' + d.resolution + '</td></tr>';
       }).join('') + '</tbody></table></div>');
     h += '</div>';
     p.innerHTML = h;
     api.bindChips(p);
 
-    // 1) 주제 비중: 주제별 색 방사형 막대
-    api.chart(el('dTopic'), polarOpt(api, ts.map(function (t) { return { k: t.key, v: t.pct, c: tcol(t.key) }; }), Object.assign({ unit: '%', bw: 9, labelW: 128 }, dims('dTopic'))));
+    api.chart(el('dTopic'), polarOpt(api, ts.map(function (t, i) { return { k: t.key, v: t.pct, c: PAS.topic[i % PAS.topic.length] }; }), Object.assign({ unit: '%', bw: 9, labelW: 128 }, dims('dTopic'))));
 
-    // 2) 단계별 주제 변화: 100% 누적 영역
     var phases = A.PHASES.filter(function (ph) { return ms.some(function (m) { return m.phase === ph; }); });
-    var share = topics.map(function () { return []; });
-    phases.forEach(function (ph) {
+    var topics = A.TOPICS;
+    var cells = [], maxv = 0;
+    phases.forEach(function (ph, x) {
       var pd = ds.filter(function (d) { return meetingById(R, d.meeting).phase === ph; });
       var tot = sum(pd.map(function (d) { return sum(d.scores); })) || 1;
-      topics.forEach(function (tp, y) { share[y].push(Math.round(sum(pd.map(function (d) { return d.scores[y]; })) / tot * 1000) / 10); });
+      topics.forEach(function (tp, y) {
+        var v = Math.round(sum(pd.map(function (d) { return d.scores[y]; })) / tot * 100);
+        maxv = Math.max(maxv, v); cells.push([x, y, v]);
+      });
     });
     api.chart(el('dTopicPhase'), {
-      legend: { top: 0, left: 0, itemWidth: 10, itemHeight: 10, icon: 'roundRect', textStyle: { color: T.ink2, fontSize: 11 } },
-      grid: { left: 46, right: 12, top: 52, bottom: 42 },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'line', lineStyle: { color: T.axis } }, formatter: function (ps) { return '<b>' + ps[0].axisValue + '</b><br>' + ps.slice().sort(function (a, b) { return b.value - a.value; }).map(function (x) { return x.marker + x.seriesName + ' <b>' + x.value + '%</b>'; }).join('<br>'); } },
-      xAxis: axis(T, { type: 'category', boundaryGap: false, data: phases, splitLine: { show: false }, axisLabel: { color: T.ink2, fontSize: 10.5, interval: 0, rotate: 30 } }),
-      yAxis: axis(T, { type: 'value', max: 100, axisLine: { show: false }, axisLabel: { color: T.muted, formatter: '{value}%' }, splitNumber: 4 }),
-      series: topics.map(function (tp, i) {
-        return { name: tp, type: 'line', stack: 'share', smooth: 0.35, symbol: 'none', data: share[i], lineStyle: { width: 1, color: T.surface }, areaStyle: { color: T.s[i], opacity: 0.85 }, itemStyle: { color: T.s[i] }, emphasis: { focus: 'series' } };
-      })
+      grid: { left: 96, right: 12, top: 8, bottom: 44 },
+      tooltip: { formatter: function (p) { return '<b>' + p.data[2] + '%</b> · ' + topics[p.data[1]] + '<br>' + phases[p.data[0]] + ' 단계'; } },
+      xAxis: axis(T, { type: 'category', data: phases, splitLine: { show: false }, axisLabel: { color: T.ink2, fontSize: 10.5, interval: 0, rotate: 30 } }),
+      yAxis: axis(T, { type: 'category', data: topics, inverse: true, axisLine: { show: false }, axisLabel: { color: T.ink2 } }),
+      visualMap: { show: false, min: 0, max: maxv || 1, inRange: { color: PAS.phase } },
+      series: [{ type: 'heatmap', data: cells, itemStyle: { borderColor: T.surface, borderWidth: 2, borderRadius: 3 },
+        label: { show: true, fontSize: 10, color: pasInk, fontWeight: 600, formatter: function (p) { return p.data[2] >= 15 ? p.data[2] : ''; } } }]
     });
 
-    // 3) 워드 클라우드
-    var kws = R.keywords.slice(0, 40);
-    var kmax = Math.max.apply(null, kws.map(function (k) { return k.count; }).concat([1])), kmin = Math.min.apply(null, kws.map(function (k) { return k.count; }));
-    var arranged = [];
-    kws.forEach(function (k, i) { if (i % 2) arranged.push(k); else arranged.unshift(k); });
-    el('dKw').innerHTML = arranged.map(function (k, i) {
-      var t = kmax === kmin ? 1 : (Math.sqrt(k.count) - Math.sqrt(kmin)) / (Math.sqrt(kmax) - Math.sqrt(kmin));
-      var sc = A.topicScores(k.key), best = sc.indexOf(Math.max.apply(null, sc)), c = Math.max.apply(null, sc) > 0 ? T.s[best] : T.ink2;
-      var size = Math.round(12 + t * 30), rot = (i % 7 === 3 && t < 0.5) ? ' style="--r:-8deg"' : '';
-      return '<button type="button" data-kw="' + api.esc(k.key) + '" title="' + api.esc(k.key + ' · ' + k.count + '회 · ' + k.meetings + '개 회의') + '"' + rot.replace('"', '"font-size:' + size + 'px;color:' + c + ';font-weight:' + (t > 0.55 ? 800 : t > 0.25 ? 700 : 600) + ';opacity:' + (0.55 + t * 0.45).toFixed(2) + ';') + (rot ? '' : ' style="font-size:' + size + 'px;color:' + c + ';font-weight:' + (t > 0.55 ? 800 : t > 0.25 ? 700 : 600) + ';opacity:' + (0.55 + t * 0.45).toFixed(2) + '"') + '>' + api.esc(k.key) + '</button>';
-    }).join('');
-    api.$$('[data-kw]', el('dKw')).forEach(function (b) { b.addEventListener('click', function () { api.setFilter('q', b.dataset.kw.replace(/\(.*\)/, '')); }); });
+    var kws = R.keywords.slice(0, 32);
+    var maxK = Math.max.apply(null, kws.map(function (k) { return k.count; }).concat([1]));
+    api.chart(el('dKw'), {
+      tooltip: { formatter: function (p) { return '<b>' + p.value + '회</b> · ' + api.esc(p.name) + '<br><span style="color:' + T.muted + '">' + p.data.meetings + '개 회의에서 언급</span>'; } },
+      series: [{
+        type: 'treemap', roam: false, nodeClick: false, breadcrumb: { show: false }, width: '100%', height: '100%', top: 0, left: 0, right: 0, bottom: 0,
+        itemStyle: { borderColor: T.surface, borderWidth: 3, gapWidth: 3, borderRadius: 6 },
+        label: { show: true, formatter: '{b}\n{c}', color: '#fff', fontSize: 12, fontWeight: 700, lineHeight: 16 },
+        data: kws.map(function (k) {
+          var t = k.count / maxK; var idx = Math.min(4, Math.round(t * 4));
+          return { name: k.key, value: k.count, meetings: k.meetings, itemStyle: { color: PAS.kw[idx] }, label: { color: pasInk } };
+        })
+      }]
+    });
 
-    // 4) 키워드 흐름: 스파크라인 행
-    var topK = R.keywords.slice(0, 8);
-    el('dKwTrend').innerHTML = topK.map(function (k) {
-      var sc = A.topicScores(k.key), best = sc.indexOf(Math.max.apply(null, sc)), c = Math.max.apply(null, sc) > 0 ? T.s[best] : T.s[0];
-      var mx = Math.max.apply(null, k.perMeeting.concat([1])), n = k.perMeeting.length, bw = 100 / n;
-      var peak = k.perMeeting.indexOf(mx);
-      var bars = k.perMeeting.map(function (v, i) { var hh = v ? 4 + v / mx * 26 : 1.5; return '<rect x="' + (i * bw + bw * 0.15).toFixed(2) + '" y="' + (30 - hh).toFixed(1) + '" width="' + (bw * 0.7).toFixed(2) + '" height="' + hh.toFixed(1) + '" rx="1" style="fill:' + (v ? c : T.grid) + ';opacity:' + (i === peak ? 1 : 0.55) + '"><title>' + api.esc(ms[i] ? ms[i].id : '') + ' · ' + v + '회</title></rect>'; }).join('');
-      return '<div class="spark-row"><span class="sk"><i style="background:' + c + '"></i>' + api.esc(k.key) + '</span><svg viewBox="0 0 100 30" preserveAspectRatio="none">' + bars + '</svg><b>' + k.count + '</b><small>최다 ' + (ms[peak] ? mno(ms[peak].id) : '-') + '</small></div>';
-    }).join('');
+    var topK = R.keywords.slice(0, 10);
+    var kc = [], kmax = 0;
+    topK.forEach(function (k, y) {
+      ms.forEach(function (m, x) { var v = k.perMeeting[x] || 0; kmax = Math.max(kmax, v); kc.push([x, y, v, m.id]); });
+    });
+    var cK = api.chart(el('dKwTrend'), {
+      grid: { left: 90, right: 8, top: 8, bottom: 28 },
+      tooltip: { formatter: function (p) { return '<b>' + p.data[2] + '회</b> · ' + api.esc(topK[p.data[1]].key) + '<br>' + p.data[3]; } },
+      xAxis: axis(T, { type: 'category', data: ms.map(function (m) { return mno(m.id); }), splitLine: { show: false }, axisLabel: { color: T.muted, fontSize: 10, interval: 1, formatter: function (v) { return String(+v); } } }),
+      yAxis: axis(T, { type: 'category', data: topK.map(function (k) { return k.key; }), inverse: true, axisLine: { show: false }, axisLabel: { color: T.ink2, interval: 0 } }),
+      visualMap: { show: false, dimension: 2, min: 0, max: kmax || 1, inRange: { color: PAS.flow } },
+      series: [{ type: 'heatmap', data: kc, itemStyle: { borderColor: T.surface, borderWidth: 2, borderRadius: 2 } }]
+    });
+    if (cK) cK.on('click', function (e) { api.openMeeting(e.data[3]); });
 
+    var I = window.Icons;
     // 5) 부서 간 이견: 부서 쌍 막대 목록
     if (pairs.length) {
       var pm = pairs[0].v;
@@ -7746,25 +7762,24 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
         var d1 = x.k[0], d2 = x.k[1];
         var ic = function (d) { return '<span class="ic-wrap sm tone-' + (I.DEPT_TONE[d] || 'slate') + '" title="' + api.esc(d) + '">' + I.icon(I.DEPT_ICON[d] || 'users', 15) + '</span>'; };
         return '<div class="pair"><span class="rk">' + (i + 1) + '</span><span class="pd2">' + ic(d1) + ic(d2) + '</span><span class="pn"><b>' + api.esc(A.DEPT_SHORT[d1] || d1) + ' ↔ ' + api.esc(A.DEPT_SHORT[d2] || d2) + '</b>' +
-          '<span class="pbar"><i style="width:' + (x.v / pm * 100) + '%;background:linear-gradient(90deg,' + T.s[1] + ',' + T.s[7] + ')"></i></span></span><em>' + x.v + '<small>건</small></em></div>';
+          '<span class="pbar"><i style="width:' + (x.v / pm * 100) + '%;background:linear-gradient(90deg,#fbc9ad,#f4a3a3)"></i></span></span><em>' + x.v + '<small>건</small></em></div>';
       }).join('');
     } else el('dConflict').innerHTML = empty('부서 간 이견 기록이 없습니다');
 
     var rc = resKeys.map(function (k, i) { return { k: k, value: ds.filter(function (d) { return d.resolution === k; }).length, c: resCol[i] }; });
-    el('dRes').innerHTML = IG().waffle(rc.map(function (r) { return { k: r.k, v: r.value, c: r.c }; }), { cols: 9 });
+    api.chart(el('dRes'), {
+      tooltip: { trigger: 'item', formatter: function (pp) { return '<b>' + pp.value + '건</b> · ' + pp.name + ' (' + pp.percent + '%)'; } },
+      legend: { bottom: 0, left: 'center', itemWidth: 10, itemHeight: 10, icon: 'circle', textStyle: { color: T.ink2, fontSize: 11 } },
+      series: [{ type: 'pie', radius: ['0%', '66%'], center: ['50%', '44%'], itemStyle: { borderColor: T.surface, borderWidth: 2 },
+        label: { show: true, position: 'inside', color: pasInk, fontWeight: 700, fontSize: 11, formatter: function (pp) { return pp.percent >= 8 ? Math.round(pp.percent) + '%' : ''; } },
+        data: rc.filter(function (r) { return r.value; }).map(function (r) { return { name: r.k, value: r.value, itemStyle: { color: r.c } }; }) }]
+    });
 
     if (recurring.length) {
-      var ic2 = recurring.slice(0, 12);
-      var stc = { '오픈': T.serious, '모니터링': T.warning, '종결': T.good, '부분종결': T.s[2], '이관': T.s[6] };
-      var dots = [];
-      ic2.forEach(function (it, y) { it.history.forEach(function (hh, x) { dots.push({ value: [x, y], it: it, hh: hh, itemStyle: { color: stc[hh.status] || T.neutral } }); }); });
-      api.chart(el('dRecur'), {
-        grid: { left: 118, right: 14, top: 8, bottom: 24 },
-        tooltip: { formatter: function (pp) { var d = pp.data; return '<b>' + d.it.id + '</b> ' + api.esc(d.it.title) + '<br>' + (d.value[0] + 1) + '번째 등장 · ' + d.hh.meeting + ' · ' + d.hh.raw; } },
-        xAxis: axis(T, { type: 'category', data: Array.apply(null, Array(Math.max.apply(null, ic2.map(function (i) { return i.mentions; })))).map(function (_, i) { return (i + 1) + '회'; }), axisLabel: { color: T.muted }, splitLine: { show: false } }),
-        yAxis: axis(T, { type: 'category', inverse: true, data: ic2.map(function (i) { return i.id + ' ' + short(i.title, 7); }), axisLine: { show: false }, axisLabel: { color: T.ink2, fontSize: 11, interval: 0 } }),
-        series: [{ type: 'scatter', symbolSize: 13, data: dots, itemStyle: { borderColor: T.surface, borderWidth: 2 } }]
-      });
+      var ic = recurring.slice(0, 12);
+      api.chart(el('dRecur'), hbarOpt(api, ic.map(function (i) { return i.id + ' ' + short(i.title, 7); }), ic.map(function (i) { return i.mentions; }), {
+        unit: '회', left: 118, color: PAS.recur, bg: true, barWidth: 11,
+        tip: function (pp) { var it = ic[pp.dataIndex]; return '<b>' + it.mentions + '회</b> 등장 · ' + api.esc(it.title) + '<br><span style="color:' + T.muted + '">현재 상태: ' + it.status + '</span>'; } }));
     }
   }
 
