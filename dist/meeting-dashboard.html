@@ -8391,7 +8391,7 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     if (net) net.on('click', function (e) { if (e.dataType === 'node') api.setFilter('depts', e.name); });
 
     var cats = D.map(function (d) { return d.short; });
-    var mets = [['회의 참여', 'meetings', '회', T.s[0]], ['업무 담당', 'actions', '건', T.s[0]], ['논의 언급', 'mentions', '건', T.s[0]], ['업무 완료율', 'doneRate', '%', T.good]];
+    var mets = [['회의 참여', 'meetings', '회', '#6a95f0'], ['업무 담당', 'actions', '건', '#9d8cf2'], ['논의 언급', 'mentions', '건', '#f0a35e'], ['업무 완료율', 'doneRate', '%', '#52be7e']];
     var grids = [], xs = [], ys = [], ser = [];
     mets.forEach(function (m, i) {
       grids.push({ left: (i * 25 + (i ? 1 : 7)) + '%', width: (i ? 21 : 16) + '%', top: 28, bottom: 10 });
@@ -8436,7 +8436,7 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     var ownerCount = {};
     R.actions.forEach(function (a) { a.owners.forEach(function (o) { ownerCount[o] = (ownerCount[o] || 0) + 1; }); });
     var pl = Object.keys(ownerCount).map(function (k) { return { n: k, v: ownerCount[k], d: R.deptOf(k) }; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 14);
-    api.chart(el('dPeople'), hbarOpt(api, pl.map(function (x) { return x.n + ' · ' + (A.DEPT_SHORT[x.d] || x.d); }), pl.map(function (x) { return x.v; }), { unit: '건', left: 110, color: T.s[0] }));
+    api.chart(el('dPeople'), hbarOpt(api, pl.map(function (x) { return x.n + ' · ' + (A.DEPT_SHORT[x.d] || x.d); }), pl.map(function (x) { return x.v; }), { unit: '건', left: 110, color: (function () { var mxp = Math.max.apply(null, pl.map(function (x) { return x.v; }).concat([1])), mnp = Math.min.apply(null, pl.map(function (x) { return x.v; })); return pl.map(function (x) { var t = mxp === mnp ? 1 : (x.v - mnp) / (mxp - mnp); return IG().mix('#d3e0fc', '#2f6bea', 0.15 + t * 0.85); }); })() }));
   }
 
   // =====================================================================
