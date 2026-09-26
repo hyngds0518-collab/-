@@ -1198,23 +1198,24 @@
   function action(p, R, api) {
     var T = api.tokens(), AC = R.actions, s = R.summary;
     if (!AC.length) { p.innerHTML = head('Action Item 관리', '') + empty(); return; }
+    // 상단 카드 톤과 맞춘 파스텔 상태색
+    var APAS = { '완료': '#86d3a3', '부분완료': '#f6cb6e', '진행중': '#93b3f6', '미착수': '#cbd3df' }, ADLY = '#e5484d';
+    function ac(k) { return APAS[k] || APAS['미착수']; }
     var st = {}; s.actionByStatus.forEach(function (x) { st[x.key] = x.value; });
     var lead = AC.filter(function (a) { return a.due; }).map(function (a) { return Math.round((new Date(a.due) - new Date(a.start)) / 86400000); });
     var avgLead = lead.length ? Math.round(sum(lead) / lead.length) : 0;
     var h = head('Action Item 관리', '업무지시사항을 담당자·부서·마감일로 구조화하고, 다음 회의의 "이전 Action 상태" 기록으로 실제 완료 여부를 추적합니다.');
     h += '<div class="tiles">' + tile('전체 업무', AC.length, '건', '평균 리드타임 ' + avgLead + '일') +
-      tile('<i class="dot" style="background:' + api.actionColor('완료') + '"></i>완료', st['완료'] || 0, '건', pctTxt((st['완료'] || 0) / AC.length * 100)) +
-      tile('<i class="dot" style="background:' + api.actionColor('부분완료') + '"></i>부분완료', st['부분완료'] || 0, '건', '후속 회의 기록 기준') +
-      tile('<i class="dot" style="background:' + api.actionColor('진행중') + '"></i>진행중', st['진행중'] || 0, '건', '완료 기록 없음 포함') +
+      tile('<i class="dot" style="background:' + ac('완료') + '"></i>완료', st['완료'] || 0, '건', pctTxt((st['완료'] || 0) / AC.length * 100)) +
+      tile('<i class="dot" style="background:' + ac('부분완료') + '"></i>부분완료', st['부분완료'] || 0, '건', '후속 회의 기록 기준') +
+      tile('<i class="dot" style="background:' + ac('진행중') + '"></i>진행중', st['진행중'] || 0, '건', '완료 기록 없음 포함') +
       tile('<b style="color:var(--critical-ink)">⚠</b> 지연', s.delayed, '건', AC.filter(function (a) { return a.delayed; }).map(function (a) { return a.id; }).join(', ')) +
-      tile('<i class="dot" style="background:' + api.actionColor('미착수') + '"></i>미착수', st['미착수'] || 0, '건', '예정 상태') + '</div>';
+      tile('<i class="dot" style="background:' + ac('미착수') + '"></i>미착수', st['미착수'] || 0, '건', '예정 상태') + '</div>';
     h += '<div class="grid">';
-    h += card('c12', '업무 간트 차트 ' + src(), '지시일(회의일) → 마감일 · 색 = 최종 상태 · ⚠ = 지연 기록 · 막대를 누르면 원문', legend(['완료', '부분완료', '진행중', '미착수'].map(function (k) { return { k: k, c: api.actionColor(k) }; }).concat([{ k: '지연', c: T.critical, sym: '⚠' }])) + '<div style="max-height:560px;overflow:auto">' + ch('aGantt', 'h480') + '</div>');
-    h += card('c3', '업무 완료율', '후속 회의 기록 기준', IG().semiGauge(AC.length ? (st['완료'] || 0) / AC.length * 100 : 0, { width: 220, stroke: 16, color: T.good, track: T.grid, ink: T.ink, muted: T.muted, sub: (st['완료'] || 0) + ' / ' + AC.length + '건 완료', label: '업무 완료율' }) +
-      '<div style="margin-top:12px">' + IG().waffle(['완료', '부분완료', '진행중', '미착수'].map(function (k) { return { k: k, v: st[k] || 0, c: api.actionColor(k) }; }).filter(function (x) { return x.v; }), { cols: 12 }) + '</div>');
-    h += card('c3', '부서별 업무 완료율', '0 · 50 · 100 눈금 진행 막대', '<div id="aDept"></div>');
-    h += card('c3', '우선순위 × 상태', '', ch('aPrio', 'h320'));
-    h += card('c3', '업무 리드타임', '지시일부터 마감일까지 (일)', ch('aLead', 'h320'));
+    h += card('c12', '업무 간트 차트 ' + src(), '지시일(회의일) → 마감일 · 색 = 최종 상태 · ⚠ = 지연 기록 · 막대를 누르면 원문', legend(['완료', '부분완료', '진행중', '미착수'].map(function (k) { return { k: k, c: ac(k) }; }).concat([{ k: '지연', c: ADLY, sym: '⚠' }])) + '<div style="max-height:560px;overflow:auto">' + ch('aGantt', 'h480') + '</div>');
+    h += card('c6', '부서별 업무 현황', '담당(공동 포함) 기준 상태별 건수 · 오른쪽 숫자 = 완료율', legend(['완료', '부분완료', '진행중', '미착수'].map(function (k) { return { k: k, c: ac(k) }; })) + '<div id="aDept" class="chart" style="height:330px"></div>');
+    h += card('c3', '우선순위 × 상태', '우선순위별 업무 상태', ch('aPrio', 'h360'));
+    h += card('c3', '업무 리드타임', '지시일부터 마감일까지 (일)', ch('aLead', 'h360'));
     h += card('c12', 'Action Item 목록', '',
       '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ID</th><th>업무지시사항</th><th>담당 부서</th><th>담당자</th><th>협업 부서</th><th>우선순위</th><th>시작일</th><th>마감일</th><th>상태</th><th>완료 기준</th><th>후속 기록</th></tr></thead><tbody>' +
       AC.map(function (a) {
@@ -1238,8 +1239,8 @@
           var i = apiE.value(0), s0 = apiE.coord([apiE.value(1), i]), s1 = apiE.coord([apiE.value(2), i]);
           var hgt = apiE.size([0, 1])[1] * 0.6, a = rows[i];
           var w = Math.max(4, s1[0] - s0[0]);
-          var children = [{ type: 'rect', shape: { x: s0[0], y: s0[1] - hgt / 2, width: w, height: hgt, r: 3 }, style: { fill: api.actionColor(a.status) } }];
-          if (a.delayed) children.push({ type: 'text', style: { text: '⚠', x: s0[0] + w + 4, y: s0[1] - 6, fill: T.critical, fontSize: 11 } });
+          var children = [{ type: 'rect', shape: { x: s0[0], y: s0[1] - hgt / 2, width: w, height: hgt, r: 3 }, style: { fill: ac(a.status) } }];
+          if (a.delayed) children.push({ type: 'text', style: { text: '⚠', x: s0[0] + w + 4, y: s0[1] - 6, fill: ADLY, fontSize: 11 } });
           return { type: 'group', children: children };
         },
         data: rows.map(function (a, i) { return { value: [i, a.start, a.due || a.start], id: a.id }; })
@@ -1247,31 +1248,44 @@
     });
     if (cg) cg.on('click', function (e) { api.openEntity(e.data.id); });
 
-    var dl = R.depts.filter(function (d) { return d.actions; }).sort(function (a, b) { return b.doneRate - a.doneRate || b.actions - a.actions; });
-    el('aDept').innerHTML = IG().progressRows(dl.map(function (d) { return { k: A.DEPT_SHORT[d.dept] || d.dept, pct: d.doneRate, c: d.doneRate >= 85 ? T.good : d.doneRate >= 70 ? T.s[0] : T.warning, label: Math.round(d.doneRate) + '%', note: d.done + '/' + d.actions + '건' + (d.delayed ? ' · 지연 ' + d.delayed : '') }; }));
+    var SK = ['완료', '부분완료', '진행중', '미착수'];
+    var dl = R.depts.filter(function (d) { return d.actions; }).sort(function (a, b) { return b.actions - a.actions; });
+    api.chart(el('aDept'), {
+      grid: { left: 96, right: 52, top: 4, bottom: 4 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(148,163,184,.10)' } },
+        formatter: function (ps) { var d = dl[ps[0].dataIndex]; return '<b>' + api.esc(d.dept) + '</b> · 완료율 ' + d.doneRate + '%<br>' + ps.filter(function (x) { return x.value && x.seriesName !== '완료율'; }).map(function (x) { return x.marker + x.seriesName + ' ' + x.value + '건'; }).join('<br>'); } },
+      xAxis: { type: 'value', show: false },
+      yAxis: axis(T, { type: 'category', inverse: true, data: dl.map(function (d) { return A.DEPT_SHORT[d.dept] || d.dept; }), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: T.ink2, fontSize: 12 } }),
+      series: SK.map(function (k) {
+        return { name: k, type: 'bar', stack: 'x', barWidth: 14, itemStyle: { color: ac(k), borderColor: T.surface, borderWidth: 2, borderRadius: 7 },
+          data: dl.map(function (d) { return AC.filter(function (a) { return a.ownerDepts.indexOf(d.dept) >= 0 && a.status === k; }).length || null; }) };
+      }).concat([{ name: '완료율', type: 'bar', stack: 'x', data: dl.map(function () { return 0; }), label: { show: true, position: 'right', distance: 8, color: T.ink, fontWeight: 700, fontSize: 11.5, formatter: function (pp) { return Math.round(dl[pp.dataIndex].doneRate) + '%'; } }, itemStyle: { color: 'transparent' }, tooltip: { show: false } }])
+    });
 
     var prios = api.uniq(AC.map(function (a) { return a.priority; }));
     var prOrder = ['최우선', '높음', '중간', '낮음'];
     prios.sort(function (a, b) { return prOrder.indexOf(a) - prOrder.indexOf(b); });
     api.chart(el('aPrio'), {
-      legend: { top: 0, left: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: T.ink2, fontSize: 11 } },
-      grid: { left: 36, right: 10, top: 44, bottom: 26 },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      xAxis: axis(T, { type: 'category', data: prios, splitLine: { show: false }, axisLabel: { color: T.ink2 } }),
-      yAxis: axis(T, { type: 'value', minInterval: 1, axisLine: { show: false } }),
-      series: ['완료', '부분완료', '진행중', '미착수'].map(function (k) {
-        return { name: k, type: 'bar', stack: 'p', barWidth: '45%', itemStyle: { color: api.actionColor(k), borderColor: T.surface, borderWidth: 1 },
+      legend: { top: 0, left: 'center', icon: 'circle', itemWidth: 8, itemHeight: 8, itemGap: 10, textStyle: { color: T.ink2, fontSize: 11 } },
+      grid: { left: 30, right: 8, top: 40, bottom: 26 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(148,163,184,.10)' } } },
+      xAxis: axis(T, { type: 'category', data: prios, splitLine: { show: false }, axisTick: { show: false }, axisLabel: { color: T.ink2, fontWeight: 600 } }),
+      yAxis: axis(T, { type: 'value', minInterval: 1, axisLine: { show: false }, axisLabel: { color: T.muted } }),
+      series: SK.map(function (k) {
+        return { name: k, type: 'bar', stack: 'p', barWidth: '42%', itemStyle: { color: ac(k), borderColor: T.surface, borderWidth: 2, borderRadius: 6 },
           data: prios.map(function (pr) { return AC.filter(function (a) { return a.priority === pr && a.status === k; }).length || null; }) };
       })
     });
     var bins = [[0, 7, '~1주'], [8, 14, '~2주'], [15, 28, '~4주'], [29, 999, '4주+']];
+    var LPAS = ['#a9c4fb', '#b7cdfb', '#c6d7fc', '#d5e1fd'];
     api.chart(el('aLead'), {
-      grid: { left: 30, right: 10, top: 16, bottom: 26 },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      xAxis: axis(T, { type: 'category', data: bins.map(function (b) { return b[2]; }), splitLine: { show: false }, axisLabel: { color: T.ink2 } }),
-      yAxis: axis(T, { type: 'value', minInterval: 1, axisLine: { show: false } }),
-      series: [{ type: 'bar', barWidth: '50%', itemStyle: { color: T.s[0], borderRadius: [4, 4, 0, 0] }, label: { show: true, position: 'top', color: T.ink2, fontSize: 11 },
-        data: bins.map(function (b) { return lead.filter(function (x) { return x >= b[0] && x <= b[1]; }).length; }) }]
+      grid: { left: 30, right: 8, top: 24, bottom: 26 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(148,163,184,.10)' } }, formatter: function (ps) { return '<b>' + ps[0].name + '</b> · ' + ps[0].value + '건'; } },
+      xAxis: axis(T, { type: 'category', data: bins.map(function (b) { return b[2]; }), splitLine: { show: false }, axisTick: { show: false }, axisLabel: { color: T.ink2, fontWeight: 600 } }),
+      yAxis: axis(T, { type: 'value', minInterval: 1, axisLine: { show: false }, axisLabel: { color: T.muted } }),
+      series: [{ type: 'bar', barWidth: '46%', showBackground: true, backgroundStyle: { color: T.surface2, borderRadius: [8, 8, 0, 0] },
+        label: { show: true, position: 'top', color: T.ink, fontWeight: 700, fontSize: 12 },
+        data: bins.map(function (b, i) { return { value: lead.filter(function (x) { return x >= b[0] && x <= b[1]; }).length, itemStyle: { color: LPAS[0], borderRadius: [8, 8, 0, 0] } }; }) }]
     });
   }
 
