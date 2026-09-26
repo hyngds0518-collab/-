@@ -440,8 +440,6 @@
       legend([{ k: '정기', c: api.natureColor('정기'), sym: '●' }, { k: '임시', c: api.natureColor('임시'), sym: '▲' }, { k: '긴급', c: api.natureColor('긴급'), sym: '⚠' }]) + ch('ovFlow', 'h240'), { click: 'flow' });
     h += card('c4', '<span class="ov-num">01</span> 회의 시간', '월별 회의 시간 합계',
       '<div class="ov-hero"><span class="big">' + hours + '</span><span class="unit">시간</span><span class="aside">총 ' + R.meetings.length + '회 · 평균 ' + Math.round(s.totalMinutes / R.meetings.length) + '분 · 참석 ' + fmtAvg(R) + '명</span></div>' + ch('ovTime', 'h240'), { click: 'basic' });
-    h += card('c4', '<span class="ov-num">01</span> 회의 장소', '층별 도면 · 높이·색 = 회의 수 · 공간을 누르면 필터',
-      '<div class="ov-hero"><span class="big">' + api.uniq(R.meetings.map(function (m) { return m.site.key; })).length + '</span><span class="unit">곳</span><span class="aside">최다 ' + api.esc(topPlace) + '</span></div>' + '<div id="ovPlan">' + floorPlanHTML(R, api, true) + '</div>', { click: 'basic' });
     h += card('c4', '<span class="ov-num">02</span> 안건·논의 분석', '주제 비중 (논의 ' + s.discussions + '건)',
       '<div class="ov-hero"><span class="big">' + topTopic.pct + '%</span><span class="aside">최다 주제 · ' + topTopic.key + '</span></div>' + ch('ovTopic', 'h200'), { click: 'discussion' });
     h += card('c4', '<span class="ov-num">03</span> 의사결정 현황', '',
@@ -460,8 +458,8 @@
     h += card('c4', '<span class="ov-num">08</span> 부서별 업무 분석', topEdge ? '최다 협업: ' + (A.DEPT_SHORT[topEdge.a] || topEdge.a) + ' ↔ ' + (A.DEPT_SHORT[topEdge.b] || topEdge.b) : '',
       ch('ovDept', 'h240'), { click: 'dept' });
 
-    h += card('c4', '<span class="ov-num">11</span> 차년도 기획 ' + (ny ? ai() : ''), ny ? '올해 실적 → 2027 목표 (올해 = 100 기준 지수)' : '',
-      ny ? ch('ovNext', 'h160') + slopeLegend(api, ny.kpis) : '<div class="empty">회고·차년도 회의가 포함되면 자동으로 채워집니다</div>', { click: 'next' });
+    h += card('c8', '<span class="ov-num">11</span> 차년도 기획 ' + (ny ? ai() : ''), ny ? '올해 실적 → 2027 목표 (올해 = 100 기준 지수)' : '',
+      ny ? '<div class="split" style="align-items:center;flex-wrap:nowrap;gap:20px"><div style="flex:1.2;min-width:0">' + ch('ovNext', 'h200') + '</div><div style="flex:1;min-width:0">' + slopeLegend(api, ny.kpis) + '</div></div>' : '<div class="empty">회고·차년도 회의가 포함되면 자동으로 채워집니다</div>', { click: 'next' });
     h += card('c12', '<span class="ov-num">10</span> AI 인사이트 ' + ai(), '',
       '<div class="ov-ins">' + ins.slice(0, 4).map(function (i) {
         return '<div><b>' + api.esc(i.metric) + '</b><small>' + api.esc(i.cat) + '</small><span>' + api.esc(i.title) + '</span></div>';
@@ -474,7 +472,6 @@
     // 차트
     onClickMeeting(api.chart(el('ovFlow'), timelineOpt(R, api, true)), api);
 
-    bindRooms(api.$('#ovPlan', p) || p, api);
 
     var months = api.uniq(R.meetings.map(function (m) { return m.date.slice(0, 7); })).sort();
     var perMonth = months.map(function (mo) { return R.meetings.filter(function (m) { return m.date.slice(0, 7) === mo; }); });
@@ -619,40 +616,38 @@
       return Object.assign({}, pp, { n: n, ch: ch2, rc: rc });
     }).filter(function (pp) { return pp.n; }).sort(function (a, b) { return b.n - a.n || b.ch - a.ch; });
     var maxN = plist.length ? plist[0].n : 1;
-    h += '<div class="grid" style="margin-bottom:16px">';
-    h += card('c4', '참석자 ' + src(), plist.length + '명 · 참석 횟수 순 · 누르면 해당 인물이 참석한 회의만 보기',
-      '<div class="plist" style="max-height:640px;overflow:auto;margin:0 -4px">' + plist.map(function (pp) {
-        return '<div class="prow" data-person="' + api.esc(pp.name) + '" role="button" tabindex="0">' + api.avatar(pp.name) +
-          '<div style="min-width:0"><b>' + api.esc(pp.name) + '</b><div class="role">' + api.esc(pp.role) + '</div>' +
-          '<div class="meta">참석<em>' + pp.n + '회</em><span style="display:inline-block;width:56px;height:4px;border-radius:2px;background:var(--grid);margin-left:8px;vertical-align:middle;position:relative;overflow:hidden"><i style="position:absolute;inset:0 auto 0 0;width:' + Math.round(pp.n / maxN * 100) + '%;background:var(--good)"></i></span></div></div>' +
-          '<div class="right">' + (pp.ch ? '<span class="status st-정기">주재 ' + pp.ch + '</span>' : '') + (pp.rc ? '<span class="pill">기록 ' + pp.rc + '</span>' : '') + '</div></div>';
-      }).join('') + '</div>');
-    h += card('c8', '회의 목록 ' + src(), ms.length + '건 · 누르면 회의록 전체 구조가 열립니다',
-      '<div class="sched" style="max-height:640px;overflow:auto;margin:0 -4px">' + ms.map(function (m) {
-        return '<div class="srow n-' + m.nature + '" data-mid="' + m.id + '" role="button" tabindex="0">' +
-          '<div class="when"><b>' + m.date.slice(2).replace(/-/g, '.') + '</b>(' + m.dow + ') ' + m.start + '<br><span style="color:var(--muted)">' + (m.durationMin || '-') + '분</span></div>' +
-          '<div class="body"><b>' + '<span style="color:var(--muted);font-weight:700;margin-right:6px">' + mno(m.id) + '</span>' + api.esc(m.title) + '</b>' +
-          '<small>' + api.avatar(m.chairName, 'xs') + '주재 ' + api.esc(m.chair) + '<span>· 기록 ' + api.esc(m.recorderName) + '</span><span>· ' + window.Icons.icon('pin', 12) + '</span>' + api.esc(short(m.room, 18)) + '</small>' +
-          '<small style="margin-top:6px"><span class="av-stack">' + m.attendees.slice(0, 5).map(function (a) { return api.avatar(a.name, 'xs'); }).join('') + (m.attendees.length > 5 ? '<span class="more">+' + (m.attendees.length - 5) + '</span>' : '') + '</span>' +
-          m.types.map(function (t) { return '<span class="pill">' + t + '</span>'; }).join('') + '<span class="pill" style="background:transparent;border:1px solid var(--border)">단계 · ' + api.esc(m.phase) + '</span></small></div>' +
-          '<div class="right"><span class="status st-' + m.nature + '">' + api.NATURE_GLYPH[m.nature] + ' ' + m.nature + '</span><span class="note" style="margin:0">결정 ' + m.decisions.length + ' · 업무 ' + m.actions.length + '</span></div></div>';
-      }).join('') + '</div>');
-    h += '</div>';
     h += '<div class="grid">';
     var roomsV = roomsOf(ms), roomArr = Object.keys(roomsV).map(function (k) { return roomsV[k]; }).sort(function (a, b) { return b.list.length - a.list.length; });
-    h += card('c12', '회의 장소 도면 ' + src(), '본사 층별 회의 공간과 외부 사이트 · 공간을 누르면 그 장소에서 열린 회의만 봅니다 (상단 필터 "회의 장소"와 연동)',
-      '<div class="fp-wrap"><div>' + floorPlanHTML(R, api, false) + window.Info.floorLegend(T) + '</div><div class="room-list">' + roomArr.map(function (r) {
+    h += card('c8', '회의 장소 도면 ' + src(), '본사 층별 회의 공간 · 공간을 누르면 그 장소의 회의만 봅니다 (필터 "회의 장소" 연동)',
+      '<div>' + floorPlanHTML(R, api, false) + window.Info.floorLegend(T) + '</div><div class="room-grid">' + roomArr.map(function (r) {
         var on = api.S.f.places.indexOf(r.key) >= 0;
         var avg = Math.round(sum(r.list.map(function (m) { return m.durationMin || 0; })) / r.list.length);
         return '<button type="button" class="room-item' + (on ? ' on' : '') + '" data-place="' + api.esc(r.key) + '"><span class="fl">' + (r.floor ? r.floor + 'F' : '외부') + '</span>' +
           '<span><b>' + api.esc(r.room) + '</b><small>' + api.esc(r.building) + ' · 평균 ' + avg + '분</small><span class="mini">' + r.list.map(function (m) { return '<i title="' + api.esc(m.id + ' ' + m.title) + '" style="background:' + api.natureColor(m.nature) + '"></i>'; }).join('') + '</span></span>' +
           '<span class="cnt">' + r.list.length + '<small style="font-size:11px;margin-left:1px">회</small></span></button>';
-      }).join('') + '</div></div>');
-    h += card('c4', '회의 성격 ' + src(), '회의 1건 = 1칸 · ● 정기 ▲ 임시 ⚠ 긴급', '<div style="padding:8px 4px">' + window.Info.waffle(s.byNature.map(function (n) { return { k: n.key, v: n.value, c: api.natureColor(n.key), glyph: api.NATURE_GLYPH[n.key] }; }), { cols: 10 }) + '</div>');
-    h += card('c4', '회의 유형 ' + src(), '방사형 막대 · 한 회의가 여러 유형에 해당 (다중 분류)', ch('bType', 'h240'));
-    var attAvg = fmtAvg(R), attMax = Math.max.apply(null, ms.map(function (m) { return m.attendees.length; }));
-    h += card('c4', '회의당 참석 규모 ' + src(), '평균 참석 인원 / 최대 ' + attMax + '명', '<div style="display:flex;align-items:flex-end;gap:14px;margin:6px 0 12px"><span class="big-num">' + attAvg + '<small>명</small></span><span class="note" style="margin:0 0 4px">회의 1건 평균 · 부서 ' + Math.round(sum(ms.map(function (m) { return m.depts.length; })) / ms.length * 10) / 10 + '개</span></div>' +
-      window.Info.pictogram(attMax, Math.round(attAvg), { color: T.s[0], track: T.grid }) + '<div class="legend" style="margin-top:10px"><span><i class="sw" style="background:' + T.s[0] + '"></i>평균 참석</span><span><i class="sw" style="background:' + T.grid + '"></i>최대 규모까지</span></div>');
+      }).join('') + '</div>');
+    h += card('c4', '참석자 ' + src(), plist.length + '명 · 참석 횟수 순 · 누르면 해당 인물이 참석한 회의만 보기',
+      '<div class="plist" style="max-height:600px;overflow:auto;margin:0 -4px">' + plist.map(function (pp) {
+        return '<div class="prow" data-person="' + api.esc(pp.name) + '" role="button" tabindex="0">' + api.avatar(pp.name) +
+          '<div style="min-width:0"><b>' + api.esc(pp.name) + '</b><div class="role">' + api.esc(pp.role) + '</div>' +
+          '<div class="meta">참석<em>' + pp.n + '회</em><span style="display:inline-block;width:56px;height:4px;border-radius:2px;background:var(--grid);margin-left:8px;vertical-align:middle;position:relative;overflow:hidden"><i style="position:absolute;inset:0 auto 0 0;width:' + Math.round(pp.n / maxN * 100) + '%;background:var(--good)"></i></span></div></div>' +
+          '<div class="right">' + (pp.ch ? '<span class="status st-정기">주재 ' + pp.ch + '</span>' : '') + (pp.rc ? '<span class="pill">기록 ' + pp.rc + '</span>' : '') + '</div></div>';
+      }).join('') + '</div>');
+    var byNat = A.NATURES.map(function (n) { var l = ms.filter(function (m) { return m.nature === n; }); return { n: n, l: l, avg: l.length ? Math.round(sum(l.map(function (m) { return m.durationMin || 0; })) / l.length) : 0, dec: sum(l.map(function (m) { return m.decisions.length; })) }; });
+    h += card('c4', '회의 성격 ' + src(), '회의 1건 = 1칸 · ● 정기 ▲ 임시 ⚠ 긴급', '<div style="padding:4px 0 6px">' + window.Info.waffle(s.byNature.map(function (n) { return { k: n.key, v: n.value, c: api.natureColor(n.key), glyph: api.NATURE_GLYPH[n.key] }; }), { cols: 10, cell: 40, legend: false }) + '</div>' +
+      '<div class="nat-rows">' + byNat.map(function (x) {
+        return '<div><span class="status st-' + x.n + '">' + api.NATURE_GLYPH[x.n] + ' ' + x.n + '</span><b>' + x.l.length + '<small>건</small></b><span class="pbar"><i style="width:' + (ms.length ? x.l.length / ms.length * 100 : 0) + '%;background:' + api.natureColor(x.n) + '"></i></span><small>평균 ' + x.avg + '분 · 결정 ' + x.dec + '</small></div>';
+      }).join('') + '</div>');
+    h += card('c4', '회의 유형 ' + src(), '방사형 막대 · 한 회의가 여러 유형에 해당 (다중 분류)', ch('bType', 'h280'));
+    var attAvg = fmtAvg(R), attMax = Math.max.apply(null, ms.map(function (m) { return m.attendees.length; })), attMin = Math.min.apply(null, ms.map(function (m) { return m.attendees.length; }));
+    var dist = []; for (var q = attMin; q <= attMax; q++) dist.push({ k: q, v: ms.filter(function (m) { return m.attendees.length === q; }).length });
+    var dMax = Math.max.apply(null, dist.map(function (x) { return x.v; }).concat([1]));
+    h += card('c4', '회의당 참석 규모 ' + src(), '평균 참석 인원 / 최대 ' + attMax + '명',
+      '<div style="display:flex;align-items:flex-end;gap:14px;margin:4px 0 10px"><span class="big-num">' + attAvg + '<small>명</small></span><span class="note" style="margin:0 0 4px">회의 1건 평균 · 최소 ' + attMin + '명 · 부서 ' + Math.round(sum(ms.map(function (m) { return m.depts.length; })) / ms.length * 10) / 10 + '개</span></div>' +
+      '<div class="picto lg">' + window.Info.pictogram(attMax, Math.round(attAvg), { color: T.s[0], track: T.grid }).replace('<div class="picto">', '').replace(/<\/div>$/, '') + '</div>' +
+      '<div class="card-sub" style="margin:14px 0 6px;font-weight:700;color:var(--ink-2)">참석 인원별 회의 수</div><div class="mini-cols">' + dist.map(function (x) {
+        return '<div title="' + x.k + '명 참석 회의 ' + x.v + '건"><span style="height:' + (x.v ? 8 + x.v / dMax * 52 : 3) + 'px;background:' + (x.v ? T.s[0] : T.grid) + '"></span><b>' + (x.v || '') + '</b><small>' + x.k + '명</small></div>';
+      }).join('') + '</div>');
     h += card('c12', '부서별 참석 매트릭스 ' + src(), '진한 칸 = 주재 부서 · 셀을 누르면 해당 회의 상세',
       legend([{ k: '참석', c: T.seq[2] }, { k: '주재', c: T.seq[5] }]) + ch('bDeptHeat', 'h360'));
     h += card('c12', '참석자 × 회의 ' + src(), '사람별 참석 이력 (● 주재 · ✎ 기록)', ch('bPeopleHeat', 'h480'));
@@ -714,6 +709,36 @@
       unit: '분', label: function (pp) { return ms[pp.dataIndex].attendees.length + '명'; },
       tip: function (ps) { var m = ms[ps[0].dataIndex]; return '<b>' + m.durationMin + '분</b> · 참석 ' + m.attendees.length + '명<br>' + api.esc(m.id) + ' · ' + api.esc(m.title); } }));
     onClickMeeting(cD, api);
+  }
+
+
+  // =====================================================================
+  // 회의 목록
+  // =====================================================================
+  function meetings(p, R, api) {
+    var ms = R.meetings;
+    if (!ms.length) { p.innerHTML = head('회의 목록', '') + empty(); return; }
+    var h = head('회의 목록', '전체 회의를 월별로 모았습니다. 행을 누르면 회의록 전체 구조(안건·결정·업무·이슈)가 열립니다.');
+    var months = api.uniq(ms.map(function (m) { return m.date.slice(0, 7); }));
+    h += '<div class="grid">';
+    h += card('c12', '회의 목록 ' + src(), ms.length + '건 · ' + months.length + '개월',
+      '<div class="sched">' + ms.map(function (m, i) {
+        var mh = (i === 0 || ms[i - 1].date.slice(0, 7) !== m.date.slice(0, 7)) ? '<div class="month-h">' + m.date.slice(0, 4) + '년 ' + (+m.date.slice(5, 7)) + '월 <small>' + ms.filter(function (x) { return x.date.slice(0, 7) === m.date.slice(0, 7); }).length + '건</small></div>' : '';
+        return mh +
+        '<div class="srow n-' + m.nature + '" data-mid="' + m.id + '" role="button" tabindex="0">' +
+          '<div class="when"><b>' + m.date.slice(2).replace(/-/g, '.') + '</b>(' + m.dow + ') ' + m.start + '<br><span style="color:var(--muted)">' + (m.durationMin || '-') + '분</span></div>' +
+          '<div class="body"><b>' + '<span style="color:var(--muted);font-weight:700;margin-right:6px">' + mno(m.id) + '</span>' + api.esc(m.title) + '</b>' +
+          '<small>' + api.avatar(m.chairName, 'xs') + '주재 ' + api.esc(m.chair) + '<span>· 기록 ' + api.esc(m.recorderName) + '</span><span>· ' + window.Icons.icon('pin', 12) + '</span>' + api.esc(short(m.room, 18)) + '</small>' +
+          '<small style="margin-top:6px"><span class="av-stack">' + m.attendees.slice(0, 5).map(function (a) { return api.avatar(a.name, 'xs'); }).join('') + (m.attendees.length > 5 ? '<span class="more">+' + (m.attendees.length - 5) + '</span>' : '') + '</span>' +
+          m.types.map(function (t) { return '<span class="pill">' + t + '</span>'; }).join('') + '<span class="pill" style="background:transparent;border:1px solid var(--border)">단계 · ' + api.esc(m.phase) + '</span></small></div>' +
+          '<div class="right"><span class="status st-' + m.nature + '">' + api.NATURE_GLYPH[m.nature] + ' ' + m.nature + '</span><span class="note" style="margin:0">결정 ' + m.decisions.length + ' · 업무 ' + m.actions.length + '</span></div></div>';
+      }).join('') + '</div>');
+    h += '</div>';
+    p.innerHTML = h;
+    api.$$('.srow[data-mid]', p).forEach(function (b) {
+      b.addEventListener('click', function () { api.openMeeting(b.dataset.mid); });
+      b.addEventListener('keydown', function (e) { if (e.key === 'Enter') api.openMeeting(b.dataset.mid); });
+    });
   }
 
   // =====================================================================
@@ -1586,5 +1611,5 @@
     });
   }
 
-  window.Views = { overview: overview, basic: basic, flow: flow, discussion: discussion, decision: decision, action: action, tracking: tracking, kpi: kpi, risk: risk, dept: dept, insight: insight, next: next };
+  window.Views = { overview: overview, basic: basic, meetings: meetings, flow: flow, discussion: discussion, decision: decision, action: action, tracking: tracking, kpi: kpi, risk: risk, dept: dept, insight: insight, next: next };
 })();

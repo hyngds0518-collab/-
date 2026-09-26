@@ -207,7 +207,7 @@
 
   // ---------- 탭 ----------
   var TABS = [
-    ['overview', '개요', 'dashboard', '대시보드'], ['basic', '회의 기본정보', 'file'], ['flow', '프로젝트 흐름', 'route'],
+    ['overview', '개요', 'dashboard', '대시보드'], ['basic', '회의 기본정보', 'file'], ['meetings', '회의 목록', 'agenda'], ['flow', '프로젝트 흐름', 'route'],
     ['discussion', '안건·논의', 'chat', '분석'], ['decision', '의사결정', 'gavel'], ['action', '실행 관리', 'list'], ['tracking', '성과 추적', 'target'],
     ['kpi', 'KPI 성과', 'trend'], ['risk', '위기·리스크', 'shield'], ['dept', '부서 분석', 'users'],
     ['insight', 'AI 인사이트', 'sparkles', '인사이트'], ['next', '차년도 기획', 'flag']

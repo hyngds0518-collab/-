@@ -645,3 +645,29 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .ov-ins span { font-size: 12.5px; line-height: 1.45; }
 @media (max-width: 1180px) { .ov-ins { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .ov-ins { grid-template-columns: 1fr; } }
+
+.fp-wrap.sm { grid-template-columns: minmax(0, 1fr) 210px; gap: 14px; }
+.fp-wrap.sm .room-list { max-height: 520px; overflow: auto; }
+.fp-wrap.sm .room-item { grid-template-columns: 32px 1fr auto; padding: 8px 10px; gap: 8px; }
+.fp-wrap.sm .room-item .fl { width: 32px; height: 32px; }
+.nat-rows { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.nat-rows > div { display: grid; grid-template-columns: 64px 44px 1fr; gap: 4px 10px; align-items: center; }
+.nat-rows b { font-size: 17px; font-weight: 800; letter-spacing: -.02em; }
+.nat-rows b small { font-size: 11px; color: var(--ink-2); margin-left: 1px; }
+.nat-rows > div > small { grid-column: 2 / 4; font-size: 11.5px; color: var(--ink-2); margin-top: -4px; }
+.picto.lg i { width: 26px; height: 34px; }
+.mini-cols { display: flex; align-items: flex-end; gap: 6px; height: 96px; }
+.mini-cols > div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; min-width: 0; height: 100%; }
+.mini-cols span { width: 100%; max-width: 26px; border-radius: 5px 5px 2px 2px; display: block; }
+.mini-cols b { font-size: 11px; order: -1; }
+.mini-cols small { font-size: 10.5px; color: var(--muted); }
+.month-h { font-size: 13px; font-weight: 800; padding: 14px 6px 6px; color: var(--ink); border-bottom: 1px solid var(--border-strong); }
+.month-h:first-child { padding-top: 2px; }
+.month-h small { font-size: 11.5px; color: var(--muted); font-weight: 600; margin-left: 4px; }
+@media (max-width: 1180px) { .fp-wrap.sm { grid-template-columns: 1fr; } }
+
+.room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 12px; }
+.room-grid .room-item { grid-template-columns: 32px 1fr auto; padding: 8px 10px; gap: 8px; }
+.room-grid .room-item .fl { width: 32px; height: 32px; }
+.room-grid .room-item small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.room-item .cnt { white-space: nowrap; }
