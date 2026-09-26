@@ -877,6 +877,20 @@ button.side-help .sh-go { color: var(--muted); font-size: 20px; line-height: 1; 
 button.side-help:hover { border-color: var(--border-strong); background: var(--surface-2); }
 button.side-help[aria-current="page"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: var(--t-blue-bg); }
 button.side-help[aria-current="page"] b { color: var(--accent); }
+/* 상단 작성자 정보 */
+.me { padding-left: 12px; margin-left: 4px; border-left: 1px solid var(--border); }
+.me-av { width: 42px; height: 42px; font-size: 12.5px; background: linear-gradient(135deg, var(--accent), #6d8cf5); }
+.me > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.me b em { font-style: normal; font-weight: 600; font-size: 11px; color: var(--accent); background: var(--t-blue-bg); padding: 1px 6px; border-radius: 999px; margin-left: 4px; vertical-align: 1px; }
+.me small { line-height: 1.3; }
+.me-mail { font-size: 11.5px; color: var(--muted); text-decoration: none; line-height: 1.3; white-space: nowrap; }
+.me-mail:hover { color: var(--accent); text-decoration: underline; }
+/* 상단바: 검색창이 줄어들어 한 줄 유지 */
+.topbar { flex-wrap: nowrap; }
+.search { width: auto; flex: 0 1 300px; min-width: 170px; }
+.page-title { flex: 1 1 200px; }
+.top-actions { flex: none; }
+@media (max-width: 1180px) { .topbar { flex-wrap: wrap; } .search { flex-basis: 220px; } }
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
@@ -985,9 +999,14 @@ button.side-help[aria-current="page"] b { color: var(--accent); }
         <button class="btn primary" id="btnUpload" type="button"><span id="upIcon"></span>회의록 업로드</button>
         <button class="icon-btn" id="btnExport" type="button" title="현재 데이터를 JSON으로 저장" aria-label="JSON 내보내기"></button>
         <button class="icon-btn" id="btnTheme" type="button" aria-label="테마 전환"></button>
-        <div class="me">
-          <span class="me-av" id="meAv">ML</span>
-          <div><b>MOMENT LAB</b><small id="datasetPill"></small></div>
+        <div class="me" title="한국외국어대학교 차이나데이터큐레이션전공 · 한예나 · hyngds0518@hufs.ac.kr">
+          <span class="me-av" id="meAv">예나</span>
+          <div>
+            <b>한예나</b>
+            <small>한국외국어대학교 차이나데이터큐레이션전공</small>
+            <a class="me-mail" href="mailto:hyngds0518@hufs.ac.kr">hyngds0518@hufs.ac.kr</a>
+            <small id="datasetPill" hidden></small>
+          </div>
         </div>
       </div>
     </header>
