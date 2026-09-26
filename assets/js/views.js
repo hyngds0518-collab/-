@@ -1199,7 +1199,7 @@
     var T = api.tokens(), AC = R.actions, s = R.summary;
     if (!AC.length) { p.innerHTML = head('Action Item 관리', '') + empty(); return; }
     // 상단 카드 톤과 맞춘 파스텔 상태색
-    var APAS = { '완료': '#86d3a3', '부분완료': '#f6cb6e', '진행중': '#93b3f6', '미착수': '#cbd3df' }, ADLY = '#e5484d';
+    var APAS = { '완료': '#52be7e', '부분완료': '#f0b43c', '진행중': '#6a95f0', '미착수': '#b5bfcd' }, ADLY = '#e5484d';
     function ac(k) { return APAS[k] || APAS['미착수']; }
     var st = {}; s.actionByStatus.forEach(function (x) { st[x.key] = x.value; });
     var lead = AC.filter(function (a) { return a.due; }).map(function (a) { return Math.round((new Date(a.due) - new Date(a.start)) / 86400000); });
@@ -1277,7 +1277,7 @@
       })
     });
     var bins = [[0, 7, '~1주'], [8, 14, '~2주'], [15, 28, '~4주'], [29, 999, '4주+']];
-    var LPAS = ['#a9c4fb', '#b7cdfb', '#c6d7fc', '#d5e1fd'];
+    var LPAS = ['#6a95f0', '#b7cdfb', '#c6d7fc', '#d5e1fd'];
     api.chart(el('aLead'), {
       grid: { left: 30, right: 8, top: 24, bottom: 26 },
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(148,163,184,.10)' } }, formatter: function (ps) { return '<b>' + ps[0].name + '</b> · ' + ps[0].value + '건'; } },
