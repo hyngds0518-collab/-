@@ -245,7 +245,7 @@
   }
   function semiGauge(pct, o) {
     o = o || {};
-    var w = o.width || 160, sw = o.stroke || 12, r = w / 2 - sw - 6, cx = w / 2, cy = r + sw + 6, p = Math.max(0, Math.min(1, pct / (o.max || 100)));
+    var pad = o.segments ? 26 : 6, w = o.width || 160, sw = o.stroke || 12, r = w / 2 - sw - pad, cx = w / 2, cy = r + sw + pad, p = Math.max(0, Math.min(1, pct / (o.max || 100)));
     function pt(t, rr) { var a = Math.PI * (1 - t); return [cx + Math.cos(a) * rr, cy - Math.sin(a) * rr]; }
     var a0 = pt(0, r), a1 = pt(1, r), ap = pt(p, r);
     var tk = '';
@@ -255,9 +255,31 @@
     void tgt;
     return '<svg class="gauge" width="100%" viewBox="0 0 ' + w + ' ' + (cy + 22) + '" role="img" aria-label="' + esc((o.label || '') + ' ' + Math.round(pct) + '%') + '">' + tk +
       '<path d="M' + f1(a0[0]) + ' ' + f1(a0[1]) + ' A' + r + ' ' + r + ' 0 0 1 ' + f1(a1[0]) + ' ' + f1(a1[1]) + '" style="fill:none;stroke:' + o.track + ';stroke-width:' + sw + ';stroke-linecap:round"/>' +
-      (p > 0 ? '<path d="M' + f1(a0[0]) + ' ' + f1(a0[1]) + ' A' + r + ' ' + r + ' 0 0 1 ' + f1(ap[0]) + ' ' + f1(ap[1]) + '" style="fill:none;stroke:' + o.color + ';stroke-width:' + sw + ';stroke-linecap:round"/>' : '') + tg +
+      (o.segments ? segArcs(o, pt, r, sw) : (p > 0 ? '<path d="M' + f1(a0[0]) + ' ' + f1(a0[1]) + ' A' + r + ' ' + r + ' 0 0 1 ' + f1(ap[0]) + ' ' + f1(ap[1]) + '" style="fill:none;stroke:' + o.color + ';stroke-width:' + sw + ';stroke-linecap:round"/>' : '')) + tg +
       '<text x="' + cx + '" y="' + f1(cy - 4) + '" text-anchor="middle" style="font-size:' + (o.fs || w * 0.145) + 'px;font-weight:800;fill:' + o.ink + ';letter-spacing:-.03em">' + esc(o.center != null ? o.center : Math.round(pct) + '%') + '</text>' +
       '<text x="' + cx + '" y="' + f1(cy + 14) + '" text-anchor="middle" style="font-size:11px;font-weight:600;fill:' + o.muted + '">' + esc(o.sub || '') + '</text></svg>';
+  }
+  // 상태별 구간 호 (예: 완료·부분완료·진행중·미착수)
+  function segArcs(o, pt, r, sw) {
+    var total = o.total || o.segments.reduce(function (a, x) { return a + x.v; }, 0) || 1, t = 0, out = '', gap = 0.012;
+    o.segments.forEach(function (sg, i) {
+      if (!sg.v) return;
+      var t0 = t, t1 = t + sg.v / total; t = t1;
+      var s0 = t0 + (t0 > 0 ? gap / 2 : 0), s1 = t1 - (t1 < 0.999 ? gap / 2 : 0);
+      if (s1 <= s0) return;
+      var a = pt(s0, r), b = pt(s1, r);
+      out += '<path d="M' + f1(a[0]) + ' ' + f1(a[1]) + ' A' + r + ' ' + r + ' 0 0 1 ' + f1(b[0]) + ' ' + f1(b[1]) + '" style="fill:none;stroke:' + sg.c + ';stroke-width:' + sw + ';stroke-linecap:butt"><title>' + esc(sg.k + ' ' + sg.v + '건 (' + Math.round(sg.v / total * 100) + '%)') + '</title></path>';
+      // 구간 라벨 (비중이 충분할 때)
+      if (sg.v / total >= 0.06) {
+        var m = pt((t0 + t1) / 2, r + sw / 2 + 14);
+        out += '<text x="' + f1(m[0]) + '" y="' + f1(m[1] + 3) + '" text-anchor="middle" style="font-size:10px;font-weight:700;fill:' + o.muted + '">' + Math.round(sg.v / total * 100) + '%</text>';
+      }
+    });
+    if (o.delayed) {
+      var d = pt(1, r);
+      out += '<text x="' + f1(d[0]) + '" y="' + f1(d[1] + sw / 2 + 16) + '" text-anchor="middle" style="font-size:10.5px;font-weight:800;fill:' + (o.crit || '#e5484d') + '">⚠ 지연 ' + o.delayed + '</text>';
+    }
+    return out;
   }
   // items: [{k, v, c, glyph}] → 사각 셀 격자
   function waffle(items, o) {

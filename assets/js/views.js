@@ -420,6 +420,9 @@
     var ny = R.ann ? R.ann.nextYear : null;
 
     var I = window.Icons.icon;
+    var pc = {}; R.meetings.forEach(function (m) { pc[m.site.key] = (pc[m.site.key] || 0) + 1; });
+    var topPlace = Object.keys(pc).sort(function (a, b) { return pc[b] - pc[a]; })[0] || '-';
+    topPlace = topPlace.replace(/^\S+\s/, '').replace(' · ', ' ') + ' ' + (pc[Object.keys(pc).sort(function (a, b) { return pc[b] - pc[a]; })[0]] || 0) + '회';
     var h = '<div class="tiles">' +
       tile('총 회의', R.meetings.length, '건', s.byNature.map(function (n) { return n.key + ' ' + n.value; }).join(' · '), '', 'calendar', 'blue') +
       tile('의사결정', s.decisions, '건', '<span class="up">확정 ' + (s.decisions ? Math.round((dec['확정'] || 0) / s.decisions * 100) : 0) + '%</span> · 조건부 ' + (dec['조건부'] || 0), '', 'gavel', 'green') +
@@ -435,30 +438,34 @@
     h += card('c8', '<span class="ov-num">09</span> 프로젝트 진행 흐름', '',
       '<div class="ov-hero"><span class="big">' + R.meetings.length + '</span><span class="unit">건</span><span class="aside">' + R.meetings[0].date.replace(/-/g, '.') + ' – ' + R.meetings[R.meetings.length - 1].date.replace(/-/g, '.') + ' · ' + api.uniq(R.meetings.map(function (m) { return m.phase; })).length + '개 단계</span></div>' +
       legend([{ k: '정기', c: api.natureColor('정기'), sym: '●' }, { k: '임시', c: api.natureColor('임시'), sym: '▲' }, { k: '긴급', c: api.natureColor('긴급'), sym: '⚠' }]) + ch('ovFlow', 'h240'), { click: 'flow' });
-    h += card('c4', '<span class="ov-num">01</span> 회의 기본정보', '',
-      '<div class="ov-hero"><span class="big">' + api.uniq(R.meetings.map(function (m) { return m.site.key; })).length + '</span><span class="unit">곳</span><span class="aside">회의 장소 · 총 ' + hours + '시간 · 참석 ' + fmtAvg(R) + '명</span></div>' + '<div id="ovPlan">' + floorPlanHTML(R, api, true) + '</div>', { click: 'basic' });
+    h += card('c4', '<span class="ov-num">01</span> 회의 시간', '월별 회의 시간 합계',
+      '<div class="ov-hero"><span class="big">' + hours + '</span><span class="unit">시간</span><span class="aside">총 ' + R.meetings.length + '회 · 평균 ' + Math.round(s.totalMinutes / R.meetings.length) + '분 · 참석 ' + fmtAvg(R) + '명</span></div>' + ch('ovTime', 'h240'), { click: 'basic' });
+    h += card('c4', '<span class="ov-num">01</span> 회의 장소', '층별 도면 · 높이·색 = 회의 수 · 공간을 누르면 필터',
+      '<div class="ov-hero"><span class="big">' + api.uniq(R.meetings.map(function (m) { return m.site.key; })).length + '</span><span class="unit">곳</span><span class="aside">최다 ' + api.esc(topPlace) + '</span></div>' + '<div id="ovPlan">' + floorPlanHTML(R, api, true) + '</div>', { click: 'basic' });
     h += card('c4', '<span class="ov-num">02</span> 안건·논의 분석', '주제 비중 (논의 ' + s.discussions + '건)',
       '<div class="ov-hero"><span class="big">' + topTopic.pct + '%</span><span class="aside">최다 주제 · ' + topTopic.key + '</span></div>' + ch('ovTopic', 'h200'), { click: 'discussion' });
     h += card('c4', '<span class="ov-num">03</span> 의사결정 현황', '',
       '<div class="ov-hero"><span class="big">' + s.decisions + '</span><span class="unit">건</span><span class="aside">번복·방향 변경 ' + reversals + '건</span></div>' + '<div style="margin-top:10px">' + IG().ringSet(s.decisionByStatus.map(function (d) { return { k: d.key, pct: s.decisions ? d.value / s.decisions * 100 : 0, color: api.decisionColor(d.key), value: d.value + '건' }; }), T, 66) + '</div>', { click: 'decision' });
     h += card('c4', '<span class="ov-num">04</span> Action Item 관리', '',
-      '<div class="ov-hero"><span class="aside">전체 ' + s.actions + '건 · 후속 회의 기록 기준</span></div>' + IG().semiGauge(s.actions ? (act['완료'] || 0) / s.actions * 100 : 0, { width: 220, stroke: 16, color: T.good, track: T.grid, ink: T.ink, muted: T.muted, sub: '업무 완료율', label: '업무 완료율' }) +
+      '<div class="ov-hero"><span class="aside">전체 ' + s.actions + '건 · 후속 회의 기록 기준</span></div>' + IG().semiGauge(s.actions ? (act['완료'] || 0) / s.actions * 100 : 0, { width: 220, stroke: 16, color: T.good, track: T.grid, ink: T.ink, muted: T.muted, sub: '업무 완료율', label: '업무 상태 구성',
+        segments: s.actionByStatus.map(function (d) { return { v: d.value, c: api.actionColor(d.key), k: d.key }; }), total: s.actions }) +
       legend(s.actionByStatus.map(function (d) { return { k: d.key + ' ' + d.value, c: api.actionColor(d.key) }; }).concat([{ k: '지연 ' + s.delayed, c: T.critical, sym: '⚠' }])), { click: 'action' });
     h += card('c4', '<span class="ov-num">05</span> 이전 → 현재 성과 추적', '',
       '<div class="ov-hero"><span class="big">' + (s.loops ? Math.round(loopOk / s.loops * 100) : 0) + '%</span><span class="aside">달성 · 목표 1개 = 1칸</span></div>' + '<div style="margin-top:8px">' + IG().waffle(s.loopByEval.filter(function (e) { return e.value; }).map(function (e) { return { k: e.key, v: e.value, c: api.evalColor(e.key) }; }), { cols: 10 }) + '</div>', { click: 'tracking' });
     h += card('c4', '<span class="ov-num">06</span> KPI 성과관리', finals.length ? '최종 실적 / 목표' : '',
-      (finals.length ? '<div class="ov-hero"><span class="big">' + finals.filter(function (f) { return f.state === '달성'; }).length + '/' + finals.length + '</span><span class="aside">프로젝트 KPI 달성 · 눈금 = 목표 100%</span></div>' + gaugeGrid(api, finals.map(function (f) { return { name: f.name.replace('POS 누적 판매', '판매량').replace('누적 ', '').replace('(CM)', ''), r: f.r, state: f.state }; }), { width: 120, compact: true })
+      (finals.length ? '<div class="ov-hero"><span class="big">' + finals.filter(function (f) { return f.state === '달성'; }).length + '/' + finals.length + '</span><span class="aside">프로젝트 KPI 달성</span></div>' + ch('ovKpi', 'h240')
         : '<div class="ov-hero"><span class="big">' + mets.length + '</span><span class="aside">수치 지표 자동 추출</span></div>' + ch('ovKpi', 'h200')), { click: 'kpi' });
     h += card('c4', '<span class="ov-num">07</span> 위기·리스크', '',
       '<div class="ov-hero"><span class="big">' + s.crises + '</span><span class="unit">건</span><span class="aside">해결 ' + crisisResolved + ' · 재발 ' + recurred + ' · 미결 이슈 ' + s.issues + '</span></div>' + ch('ovRisk', 'h200'), { click: 'risk' });
     h += card('c4', '<span class="ov-num">08</span> 부서별 업무 분석', topEdge ? '최다 협업: ' + (A.DEPT_SHORT[topEdge.a] || topEdge.a) + ' ↔ ' + (A.DEPT_SHORT[topEdge.b] || topEdge.b) : '',
       ch('ovDept', 'h240'), { click: 'dept' });
-    h += card('c4', '<span class="ov-num">10</span> AI 인사이트 ' + ai(), '',
-      '<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">' + ins.slice(0, 4).map(function (i) {
-        return '<div style="display:grid;grid-template-columns:104px 1fr;gap:10px;align-items:center"><b style="font-size:' + (String(i.metric).length > 5 ? 15 : 19) + 'px;letter-spacing:-.02em">' + api.esc(i.metric) + '</b><span style="font-size:12.5px;line-height:1.4"><span style="color:var(--muted);font-weight:700;font-size:11px">' + api.esc(i.cat) + '</span><br>' + api.esc(i.title) + '</span></div>';
-      }).join('') + '</div>', { click: 'insight' });
+
     h += card('c4', '<span class="ov-num">11</span> 차년도 기획 ' + (ny ? ai() : ''), ny ? '올해 실적 → 2027 목표 (올해 = 100 기준 지수)' : '',
       ny ? ch('ovNext', 'h160') + slopeLegend(api, ny.kpis) : '<div class="empty">회고·차년도 회의가 포함되면 자동으로 채워집니다</div>', { click: 'next' });
+    h += card('c12', '<span class="ov-num">10</span> AI 인사이트 ' + ai(), '',
+      '<div class="ov-ins">' + ins.slice(0, 4).map(function (i) {
+        return '<div><b>' + api.esc(i.metric) + '</b><small>' + api.esc(i.cat) + '</small><span>' + api.esc(i.title) + '</span></div>';
+      }).join('') + '</div>', { click: 'insight' });
     h += '</div>';
     p.innerHTML = h;
     bindGo(p, api);
@@ -469,10 +476,25 @@
 
     bindRooms(api.$('#ovPlan', p) || p, api);
 
+    var months = api.uniq(R.meetings.map(function (m) { return m.date.slice(0, 7); })).sort();
+    var perMonth = months.map(function (mo) { return R.meetings.filter(function (m) { return m.date.slice(0, 7) === mo; }); });
+    var hrs = perMonth.map(function (ms) { return Math.round(sum(ms.map(function (m) { return m.durationMin || 0; })) / 6) / 10; });
+    api.chart(el('ovTime'), {
+      grid: { left: 34, right: 12, top: 18, bottom: 24 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'line', lineStyle: { color: T.axis } }, formatter: function (ps) { var i = ps[0].dataIndex, ms = perMonth[i]; return '<b>' + hrs[i] + '시간</b> · ' + months[i] + ' · ' + ms.length + '회<br>' + ms.map(function (m) { return api.NATURE_GLYPH[m.nature] + ' ' + m.durationMin + '분 · ' + api.esc(short(m.title, 20)); }).join('<br>'); } },
+      xAxis: axis(T, { type: 'category', boundaryGap: false, data: months.map(function (x) { return +x.slice(5) + '월'; }), splitLine: { show: false }, axisLabel: { color: T.muted, fontSize: 10.5 } }),
+      yAxis: axis(T, { type: 'value', axisLine: { show: false }, splitNumber: 3, name: '시간', nameTextStyle: { color: T.muted, fontSize: 10.5 } }),
+      series: [{ type: 'line', smooth: 0.4, symbol: 'circle', symbolSize: 7, data: hrs,
+        lineStyle: { color: T.s[0], width: 2.5 }, itemStyle: { color: T.surface, borderColor: T.s[0], borderWidth: 2 },
+        areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(37,99,235,.28)' }, { offset: 1, color: 'rgba(37,99,235,0)' }] } } }]
+    });
+
     var tops = R.topicShare.slice(0, 6);
     api.chart(el('ovTopic'), polarOpt(api, tops.slice(0, 5).map(function (t) { return { k: t.key, v: t.pct }; }), { unit: '%', bw: 8 }));
 
-    if (!finals.length) {
+    if (finals.length) {
+      api.chart(el('ovKpi'), kpiBulletOpt(api, finals.map(function (f) { return { name: f.name.replace('누적 ', '').replace('(CM)', ''), r: f.r, state: f.state, tip: api.fmt(f.last.actual, 2) + f.unit + ' / 목표 ' + api.fmt(f.last.target, 2) + f.unit }; }), 96));
+    } else {
       if (mets.length) api.chart(el('ovKpi'), kpiBulletOpt(api, mets.slice(0, 6).map(function (m) { return { name: short(m.metric, 10), r: m.rate, state: m.state, tip: m.actual + m.unit + ' / 목표 ' + m.target + m.unit }; }), 96));
       else el('ovKpi').innerHTML = empty('수치형 목표·실적이 없습니다');
     }

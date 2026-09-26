@@ -637,3 +637,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .risk-list b { width: 22px; height: 22px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-size: 11px; }
 .risk-list small { display: block; font-size: 11px; color: var(--muted); }
 @media (max-width: 760px) { .risk-list { grid-template-columns: 1fr; } }
+
+.ov-ins { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 4px; }
+.ov-ins > div { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; background: var(--surface-2); }
+.ov-ins b { font-size: 22px; letter-spacing: -.03em; line-height: 1.2; }
+.ov-ins small { font-size: 11px; font-weight: 700; color: var(--muted); }
+.ov-ins span { font-size: 12.5px; line-height: 1.45; }
+@media (max-width: 1180px) { .ov-ins { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .ov-ins { grid-template-columns: 1fr; } }
