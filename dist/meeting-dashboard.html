@@ -8101,7 +8101,7 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     h += '<div class="grid">';
     var gOpts = [['전체', AC.length]].concat(['완료', '부분완료', '진행중', '미착수'].map(function (k) { return [k, st[k] || 0]; })).concat([['지연', AC.filter(function (a) { return a.delayed; }).length]]);
     if (!gOpts.some(function (o) { return o[0] === ganttF && o[1]; })) ganttF = '전체';
-    h += card('c12', '업무 간트 차트 ' + src(), '지시한 회의별로 묶어 표시 · 막대 = 지시일 → 마감일 · 오른쪽 = 담당자·마감일 · 위 슬라이더로 기간 확대 · 막대를 누르면 원문',
+    h += card('c12', '업무 간트 차트 ' + src(), '지시한 회의별로 묶어 표시 · 막대 = 지시일 → 마감일 · 오른쪽 = 담당자·마감일 · 차트 위에서 휠로 스크롤 · 위 슬라이더로 기간 확대 · 막대를 누르면 원문',
       '<div class="gantt-bar"><div class="seg-chips" role="tablist">' + gOpts.map(function (o) {
         return '<button type="button" class="gchip' + (ganttF === o[0] ? ' on' : '') + '" data-gf="' + o[0] + '"' + (o[1] ? '' : ' disabled') + '>' + (o[0] === '지연' ? '<b style="color:' + ADLY + '">⚠</b>' : o[0] === '전체' ? '' : '<i style="background:' + ac(o[0]) + '"></i>') + o[0] + '<em>' + o[1] + '</em></button>';
       }).join('') + '</div></div>' + ch('aGantt', 'h480'));
@@ -8120,26 +8120,33 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
 
     var rows = AC.filter(function (a) { return ganttF === '전체' ? true : ganttF === '지연' ? a.delayed : a.status === ganttF; });
     var ROWH = 26;
-    var gEl = el('aGantt'); gEl.style.height = Math.max(200, rows.length * ROWH + 86) + 'px';
+    var VIS = Math.min(rows.length, 20);
+    var rowIdx = {}; rows.forEach(function (r, i) { rowIdx[r.id] = i; });
+    var gEl = el('aGantt'); gEl.style.height = Math.max(200, VIS * ROWH + 86) + 'px';
     // 지시 회의별 그룹
     var groups = [];
     rows.forEach(function (a, i) { var g = groups[groups.length - 1]; if (g && g.m === a.meeting) g.to = i; else groups.push({ m: a.meeting, from: i, to: i }); });
     var t0 = Math.min.apply(null, rows.map(function (a) { return +new Date(a.start); })), t1 = Math.max.apply(null, rows.map(function (a) { return +new Date(a.due || a.start); }));
     var md = function (d) { return d ? d.slice(5).replace('-', '.') : '-'; };
     var cg = api.chart(gEl, {
-      grid: { left: 250, right: 150, top: 64, bottom: 8 },
+      grid: { left: 250, right: 160, top: 64, bottom: 8 },
       dataZoom: [{ type: 'slider', xAxisIndex: 0, top: 6, height: 18, filterMode: 'none', showDetail: false, brushSelect: false, borderColor: T.grid, fillerColor: 'rgba(106,149,240,.15)', handleStyle: { color: T.surface, borderColor: '#6a95f0' }, moveHandleSize: 0, dataBackground: { lineStyle: { opacity: 0 }, areaStyle: { opacity: 0 } } },
-        { type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl', moveOnMouseWheel: false, moveOnMouseMove: true }],
+        { type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl', moveOnMouseWheel: false, moveOnMouseMove: true }]
+        .concat(rows.length > VIS ? [
+          { type: 'inside', yAxisIndex: 0, filterMode: 'none', startValue: 0, endValue: VIS - 1, zoomLock: true, zoomOnMouseWheel: false, moveOnMouseWheel: true, moveOnMouseMove: false, preventDefaultMouseMove: false },
+          { type: 'slider', yAxisIndex: 0, filterMode: 'none', startValue: 0, endValue: VIS - 1, zoomLock: true, right: 4, width: 8, top: 64, bottom: 8, showDetail: false, brushSelect: false, handleSize: 0, moveHandleSize: 0,
+            borderColor: 'transparent', backgroundColor: T.surface2, fillerColor: '#b9c9f5', dataBackground: { lineStyle: { opacity: 0 }, areaStyle: { opacity: 0 } } }] : []),
       tooltip: { formatter: function (pp) { var a = pp.data.a; if (!a) return ''; return '<b>' + a.id + '</b> · ' + a.status + (a.delayed ? ' · <span style="color:' + ADLY + '">⚠ 지연</span>' : '') + '<br>' + api.esc(a.task) + '<br><span style="color:' + T.muted + '">' + a.meeting + ' 지시 · ' + a.start + ' → ' + a.due + '<br>담당 ' + api.esc(a.owners.join(', ')) + ' · ' + api.esc(a.priority) + '</span>'; } },
       xAxis: { type: 'time', position: 'top', min: t0 - 4 * 864e5, max: t1 + 12 * 864e5, splitNumber: 12, axisLine: { show: false }, axisTick: { show: false },
         splitLine: { show: true, lineStyle: { color: T.grid, type: 'dashed' } }, axisLabel: { color: T.muted, fontSize: 11, hideOverlap: true, formatter: function (v) { var d = new Date(v); return (d.getFullYear() % 100) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + (d.getDate() > 1 ? '.' + ('0' + d.getDate()).slice(-2) : ''); } } },
       yAxis: { type: 'category', inverse: true, data: rows.map(function (a) { return a.id; }), axisLine: { show: false }, axisTick: { show: false },
-        axisLabel: { interval: 0, align: 'left', margin: 242, formatter: function (v, i) { var a = rows[i], g = groups.filter(function (x) { return x.from === i; })[0]; return (g ? '{m|' + mno(a.meeting) + '}' : '{sp|}') + '{id|' + a.id + '}{t|' + short(a.task, 15) + '}'; },
+        axisLabel: { interval: 0, align: 'left', margin: 242, formatter: function (v) { var i = rowIdx[v], a = rows[i], g = groups.filter(function (x) { return x.from === i; })[0]; return (g ? '{m|' + mno(a.meeting) + '}' : '{sp|}') + '{id|' + a.id + '}{t|' + short(a.task, 15) + '}'; },
           rich: { m: { color: '#fff', backgroundColor: '#6a95f0', borderRadius: 4, fontSize: 10, fontWeight: 700, padding: [2, 5] }, sp: { width: 29 }, id: { color: T.ink, fontWeight: 700, fontSize: 11, width: 50, padding: [0, 0, 0, 8] }, t: { color: T.ink2, fontSize: 11.5, width: 150, overflow: 'truncate', align: 'left' } } } },
       series: [{
         type: 'custom', silent: true, z: -1, zlevel: 0, clip: false,
         renderItem: function (params, e) {
           var g = groups[params.dataIndex], y0 = e.coord([t0, g.from])[1] - ROWH / 2, y1 = e.coord([t0, g.to])[1] + ROWH / 2, cs = params.coordSys;
+          y0 = Math.max(y0, cs.y); y1 = Math.min(y1, cs.y + cs.height); if (y1 - y0 < 4) return null;
           return { type: 'rect', shape: { x: cs.x - 250, y: y0 + 1, width: cs.width + 250 + 150, height: y1 - y0 - 2, r: 8 }, style: { fill: params.dataIndex % 2 ? 'rgba(0,0,0,0)' : T.surface2 } };
         },
         data: groups.map(function (g, i) { return [i]; })
@@ -8147,7 +8154,7 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
         type: 'custom', encode: { x: [1, 2], y: 0 }, z: 3, clip: false,
         renderItem: function (params, e) {
           var i = e.value(0), s0 = e.coord([e.value(1), i]), s1 = e.coord([e.value(2), i]), a = rows[i], cs = params.coordSys;
-          if (s1[0] < cs.x || s0[0] > cs.x + cs.width) return null;
+          if (s1[0] < cs.x || s0[0] > cs.x + cs.width || s0[1] < cs.y || s0[1] > cs.y + cs.height) return null;
           s0 = [Math.max(s0[0], cs.x), s0[1]]; s1 = [Math.min(s1[0], cs.x + cs.width), s1[1]];
           var hgt = 12, w = Math.max(10, s1[0] - s0[0]), c = ac(a.status);
           var ch2 = [{ type: 'rect', shape: { x: s0[0], y: s0[1] - hgt / 2, width: w, height: hgt, r: hgt / 2 }, style: { fill: c } },
