@@ -793,6 +793,84 @@
     });
   }
 
+  // 단계 흐름 (STEP 카드 + 연결선) 과 단계 상세
+  var flowSel = null;
+  var PHASE_ICON = { '기획': ['bulb', 'blue'], '개발': ['box', 'purple'], '생산': ['factory', 'amber'], '유통': ['truck', 'orange'], '런칭': ['sparkles', 'blue'],
+    '성장': ['trend', 'green'], '시즌 프로모션': ['calendar', 'pink'], '성과평가': ['target', 'teal'], '차년도 계획': ['flag', 'green'] };
+  function stepFlowHTML(stats, api) {
+    var I = window.Icons.icon;
+    return '<div class="steps-flow" role="tablist" aria-label="프로젝트 단계">' + stats.map(function (x, i) {
+      var ic = PHASE_ICON[x.ph] || ['flag', 'blue'], nx = stats[i + 1];
+      var desc = x.meetings.map(function (m) { return m.title.replace(/\s*(및|·).*$/, ''); }).slice(0, 2).join(' · ');
+      var gapDays = nx ? Math.round((new Date(nx.from) - new Date(x.to)) / 86400000) : 0;
+      return '<button type="button" class="sf-card' + (flowSel === x.ph ? ' on' : '') + '" data-phase="' + api.esc(x.ph) + '" role="tab" aria-selected="' + (flowSel === x.ph) + '">' +
+        '<span class="sf-badge">STEP ' + ('0' + (i + 1)).slice(-2) + '</span>' +
+        '<span class="ic-wrap sq tone-' + ic[1] + '">' + I(ic[0], 22) + '</span>' +
+        '<b>' + api.esc(x.ph) + '</b><small class="sf-desc">' + api.esc(desc) + '</small>' +
+        '<span class="sf-meta">' + x.from.slice(5).replace('-', '.') + (x.to !== x.from ? '–' + x.to.slice(5).replace('-', '.') : '') + '</span>' +
+        '<span class="sf-nums"><em>회의 ' + x.n + '</em><em>결정 ' + x.dec + '</em>' + (x.urgent ? '<em class="u">⚠ ' + x.urgent + '</em>' : '') + '</span></button>' +
+        (nx ? '<span class="sf-link"><small>' + gapDays + '일</small><i></i></span>' : '');
+    }).join('') + '</div>';
+  }
+  function phaseDetailHTML(R, api, ph) {
+    var I = window.Icons.icon, T = api.tokens();
+    var ms = R.meetings.filter(function (m) { return m.phase === ph; });
+    if (!ms.length) return '';
+    var ids = {}; ms.forEach(function (m) { ids[m.id] = true; });
+    var decs = R.decisions.filter(function (d) { return ids[d.meeting]; });
+    var acts = R.actions.filter(function (a) { return ids[a.meeting]; });
+    var loops = R.loops.filter(function (l) { return ids[l.meeting]; });
+    var issues = R.issues.filter(function (it) { return ids[it.first.meeting]; });
+    var mins = sum(ms.map(function (m) { return m.durationMin || 0; }));
+    var from = ms[0].date, to = ms[ms.length - 1].date, span = Math.round((new Date(to) - new Date(from)) / 86400000) + 1;
+    var idx = A.PHASES.indexOf(ph), ic = PHASE_ICON[ph] || ['flag', 'blue'];
+    var done = acts.filter(function (a) { return a.done; }).length;
+    var pills = [['회의 ' + ms.length + '건', T.s[0]], ['결정 ' + decs.length + '건', T.good], ['업무 ' + acts.length + '건 · 완료 ' + (acts.length ? Math.round(done / acts.length * 100) : 0) + '%', T.s[6]],
+      ['새 이슈 ' + issues.length + '건', T.warning], ['회의 시간 ' + Math.round(mins / 6) / 10 + '시간', T.s[2]]];
+    var urgent = ms.filter(function (m) { return m.nature === '긴급'; }).length;
+    if (urgent) pills.push(['긴급회의 ' + urgent + '건', T.critical]);
+    var h = '<div class="pd">';
+    h += '<div class="pd-head"><span class="ic-wrap lg sq tone-' + ic[1] + '">' + I(ic[0], 24) + '</span><div><span class="sf-badge static">STEP ' + ('0' + (R.meetings.length ? phaseOrder(R, ph) : idx + 1)).slice(-2) + '</span>' +
+      '<h3>' + api.esc(ph) + '</h3><p>' + from.replace(/-/g, '.') + ' – ' + to.replace(/-/g, '.') + ' · ' + span + '일간 · ' + api.esc(api.uniq(ms.map(function (m) { return m.stage; })).join(', ')) + '</p></div>' +
+      '<button type="button" class="mini-btn" data-phase-filter="' + api.esc(ph) + '">' + I('target', 13) + '이 단계만 보기</button></div>';
+    h += '<div class="pd-pills">' + pills.map(function (x) { return '<span><i style="background:' + x[1] + '"></i>' + x[0] + '</span>'; }).join('') + '</div>';
+    h += '<div class="pd-grid">';
+    h += '<div class="pd-col"><h5>' + I('calendar', 14) + '회의</h5>' + ms.map(function (m) {
+      return '<button type="button" class="pd-m" data-open="' + m.id + '"><span class="status st-' + m.nature + '">' + api.NATURE_GLYPH[m.nature] + ' ' + m.nature + '</span><b>' + api.esc(m.title) + '</b><small>' + m.date.replace(/-/g, '.') + ' · ' + api.esc(m.chairName) + ' 주재 · ' + (m.durationMin || '-') + '분 · 참석 ' + m.attendees.length + '명</small></button>';
+    }).join('') + '</div>';
+    h += '<div class="pd-col"><h5>' + I('gavel', 14) + '핵심 결정 ' + decs.length + '</h5>' + decs.slice(0, 6).map(function (d) {
+      return '<div class="pd-d">' + api.chips(d.id) + api.decisionPill(d.status, d.statusRaw) + '<p>' + api.esc(d.text) + '</p></div>';
+    }).join('') + (decs.length > 6 ? '<div class="note">외 ' + (decs.length - 6) + '건 — 의사결정 탭에서 전체 보기</div>' : '') + '</div>';
+    h += '<div class="pd-col"><h5>' + I('target', 14) + '성과 피드백 · 이슈</h5>' + (loops.length ? loops.slice(0, 4).map(function (l) {
+      return '<div class="pd-d">' + api.chips(l.ref) + api.evalPill(l.eval, l.evalRaw) + '<p><b>' + api.esc(short(l.target, 40)) + '</b> → ' + api.esc(short(l.result, 48)) + '</p></div>';
+    }).join('') : '<div class="note">이 단계에서 평가된 성과 피드백이 없습니다</div>') +
+      (issues.length ? '<div class="pd-issues">' + issues.map(function (it) { return '<span title="' + api.esc(it.title) + ' · 현재 ' + it.status + '">' + api.chips(it.id) + api.esc(short(it.title, 14)) + '</span>'; }).join('') + '</div>' : '') + '</div>';
+    h += '</div></div>';
+    return h;
+  }
+  function phaseOrder(R, ph) {
+    var list = A.PHASES.filter(function (p) { return R.meetings.some(function (m) { return m.phase === p; }); });
+    return list.indexOf(ph) + 1;
+  }
+  function bindStepFlow(p, R, api) {
+    function bindDetail() {
+      var box = document.getElementById('phaseDetail');
+      api.bindChips(box);
+      api.$$('[data-open]', box).forEach(function (b) { b.addEventListener('click', function () { api.openMeeting(b.dataset.open); }); });
+      api.$$('[data-phase-filter]', box).forEach(function (b) { b.addEventListener('click', function () { api.setFilter('phases', b.dataset.phaseFilter); }); });
+    }
+    api.$$('.sf-card', p).forEach(function (c) {
+      c.addEventListener('click', function () {
+        flowSel = c.dataset.phase;
+        api.$$('.sf-card', p).forEach(function (x) { var on = x === c; x.classList.toggle('on', on); x.setAttribute('aria-selected', String(on)); });
+        var box = document.getElementById('phaseDetail');
+        box.innerHTML = phaseDetailHTML(R, api, flowSel);
+        bindDetail();
+      });
+    });
+    bindDetail();
+  }
+
   // =====================================================================
   // 09 프로젝트 흐름
   // =====================================================================
@@ -801,23 +879,20 @@
     if (!ms.length) { p.innerHTML = head('프로젝트 진행 흐름', '') + empty(); return; }
     var phaseStats = A.PHASES.map(function (ph) {
       var pm = ms.filter(function (m) { return m.phase === ph; });
-      return { ph: ph, n: pm.length, from: pm.length ? pm[0].date : '', to: pm.length ? pm[pm.length - 1].date : '', dec: sum(pm.map(function (m) { return m.decisions.length; })),
+      return { ph: ph, n: pm.length, meetings: pm, from: pm.length ? pm[0].date : '', to: pm.length ? pm[pm.length - 1].date : '', dec: sum(pm.map(function (m) { return m.decisions.length; })),
         act: sum(pm.map(function (m) { return m.actions.length; })), urgent: pm.filter(function (m) { return m.nature === '긴급'; }).length };
     }).filter(function (x) { return x.n; });
     var h = head('프로젝트 진행 흐름', '전체 회의를 단계별 타임라인으로 봅니다. ● 정기 ▲ 임시 ⚠ 긴급 · 점을 누르면 회의 상세가 열립니다.');
+    if (!flowSel || !phaseStats.some(function (x) { return x.ph === flowSel; })) flowSel = phaseStats[0].ph;
     h += '<div class="grid">';
+    h += card('c12', '단계 흐름 요약 ' + src(), 'HOW IT WENT — 단계를 누르면 그 단계의 회의·결정·성과가 아래에 펼쳐집니다', stepFlowHTML(phaseStats, api) + '<div id="phaseDetail">' + phaseDetailHTML(R, api, flowSel) + '</div>');
     h += card('c12', '단계별 타임라인 ' + src(), '기획 → 개발 → 생산 → 유통 → 런칭 → 성장 → 시즌 프로모션 → 성과평가 → 차년도 계획',
       legend([{ k: '정기회의', c: api.natureColor('정기'), sym: '●' }, { k: '임시회의', c: api.natureColor('임시'), sym: '▲' }, { k: '긴급회의', c: api.natureColor('긴급'), sym: '⚠' }]) + ch('fTimeline', 'h420'));
-    h += card('c12', '단계 흐름 요약', '', '<div style="display:flex;gap:6px;overflow-x:auto;padding:4px 0 6px">' + phaseStats.map(function (x, i) {
-      return '<div style="flex:1 0 118px;background:var(--surface-2);border-radius:10px;padding:10px 12px;position:relative;border-top:3px solid ' + T.seq[Math.min(6, 1 + Math.floor(i * 6 / Math.max(1, phaseStats.length - 1)))] + '">' +
-        '<div style="font-size:11px;color:var(--muted);font-weight:700">STEP ' + (i + 1) + '</div><div style="font-weight:800;font-size:13.5px">' + x.ph + '</div>' +
-        '<div style="font-size:11.5px;color:var(--ink-2)">' + x.from.slice(2).replace(/-/g, '.') + (x.to !== x.from ? '–' + x.to.slice(5).replace('-', '.') : '') + '</div>' +
-        '<div style="font-size:12px;margin-top:6px">회의 <b>' + x.n + '</b> · 결정 <b>' + x.dec + '</b> · 업무 <b>' + x.act + '</b>' + (x.urgent ? ' · <b style="color:var(--critical-ink)">⚠' + x.urgent + '</b>' : '') + '</div></div>';
-    }).join('') + '</div>');
     h += card('c8', '회의별 산출물', '회의마다 나온 결정·업무·이슈 건수', legend([{ k: '결정', c: T.s[0] }, { k: '업무', c: T.s[2] }, { k: '이슈', c: T.s[3] }]) + ch('fOut', 'h280'));
     h += card('c4', '단계별 회의 밀도', '단계별 회의 수 (긴급 포함)', ch('fPhase', 'h280'));
     h += '</div>';
     p.innerHTML = h;
+    bindStepFlow(p, R, api);
     onClickMeeting(api.chart(el('fTimeline'), timelineOpt(R, api, false)), api);
     var cO = api.chart(el('fOut'), {
       grid: { left: 32, right: 12, top: 12, bottom: 28 },

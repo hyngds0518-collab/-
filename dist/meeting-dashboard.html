@@ -723,6 +723,51 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 @media (max-width: 1180px) { .stack { grid-column: span 12; } }
 @media (max-width: 560px) { .plist.compact.two { grid-template-columns: 1fr; } }
 
+/* 단계 흐름 (STEP 카드) */
+.steps-flow { display: flex; align-items: stretch; overflow-x: auto; padding: 22px 6px 14px; gap: 0; scrollbar-width: thin;
+  background: radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--t-blue-bg) 90%, transparent), transparent 55%), radial-gradient(ellipse at 100% 100%, color-mix(in srgb, var(--t-green-bg) 90%, transparent), transparent 55%);
+  border-radius: 14px; margin: 4px -4px 0; }
+.sf-card { flex: 1 1 0; min-width: 96px; padding-left: 8px !important; padding-right: 8px !important; position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 24px 10px 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 6px 20px rgba(16, 24, 40, .06); transition: transform .15s, box-shadow .15s, border-color .15s; }
+.sf-card:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(16, 24, 40, .1); }
+.sf-card.on { border: 1.5px solid var(--accent); background: linear-gradient(160deg, var(--t-blue-bg), var(--surface) 55%, var(--t-green-bg)); transform: translateY(-4px); box-shadow: 0 14px 30px rgba(37, 99, 235, .16); }
+.sf-badge { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .08em; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+:root[data-theme="dark"] .sf-badge { background: #e5e9f2; color: #0b0f17; }
+.sf-card.on .sf-badge { background: linear-gradient(90deg, #2563eb, #16a34a); color: #fff; }
+.sf-badge.static { position: static; transform: none; display: inline-block; margin-bottom: 4px; background: linear-gradient(90deg, #2563eb, #16a34a); color: #fff; }
+.sf-card .ic-wrap { width: 46px; height: 46px; border-radius: 13px; margin-bottom: 2px; }
+.sf-card > b { font-size: 14px; letter-spacing: -.01em; }
+.sf-desc { font-size: 11px; color: var(--ink-2); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 33px; }
+.sf-meta { font-size: 11px; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sf-nums { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.sf-nums em { font-style: normal; font-size: 10.5px; font-weight: 700; background: var(--surface-3); color: var(--ink-2); border-radius: 6px; padding: 1px 6px; }
+.sf-nums em.u { background: var(--t-red-bg); color: var(--t-red); }
+.sf-link { flex: 0 0 22px; min-width: 22px; align-self: center; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.sf-link small { font-size: 9.5px; font-weight: 800; color: var(--muted); letter-spacing: 0; white-space: nowrap; }
+.sf-link i { width: 100%; height: 1.5px; background: var(--border-strong); position: relative; }
+.sf-link i::after { content: ""; position: absolute; right: -1px; top: 50%; transform: translateY(-50%); border-left: 6px solid var(--accent); border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+.pd { margin-top: 16px; border: 1px solid var(--border); border-radius: 16px; padding: 18px; background: var(--surface); animation: fadeIn .2s ease; }
+.pd-head { display: flex; gap: 14px; align-items: center; }
+.pd-head h3 { margin: 0; font-size: 18px; letter-spacing: -.01em; }
+.pd-head p { margin: 2px 0 0; font-size: 12.5px; color: var(--ink-2); }
+.pd-head .mini-btn { margin-left: auto; }
+.pd-pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.pd-pills span { display: inline-flex; align-items: center; gap: 7px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; box-shadow: 0 2px 8px rgba(16, 24, 40, .04); }
+.pd-pills i { width: 7px; height: 7px; border-radius: 50%; }
+.pd-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.pd-col { background: var(--surface-2); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pd-col h5 { margin: 0 0 2px; font-size: 12.5px; display: flex; align-items: center; gap: 6px; color: var(--accent-ink); }
+.pd-m { text-align: left; border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 9px 10px; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.pd-m:hover { border-color: var(--accent); }
+.pd-m b { font-size: 13px; line-height: 1.4; }
+.pd-m small { font-size: 11.5px; color: var(--ink-2); }
+.pd-d { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pd-d p { margin: 0; width: 100%; font-size: 12.5px; color: var(--ink-2); }
+.pd-d p b { color: var(--ink); font-weight: 600; }
+.pd-issues { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.pd-issues span { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 3px 8px 3px 3px; }
+@media (max-width: 980px) { .pd-grid { grid-template-columns: 1fr; } .pd-head { flex-wrap: wrap; } .pd-head .mini-btn { margin-left: 0; } }
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script>
@@ -7441,6 +7486,84 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     });
   }
 
+  // 단계 흐름 (STEP 카드 + 연결선) 과 단계 상세
+  var flowSel = null;
+  var PHASE_ICON = { '기획': ['bulb', 'blue'], '개발': ['box', 'purple'], '생산': ['factory', 'amber'], '유통': ['truck', 'orange'], '런칭': ['sparkles', 'blue'],
+    '성장': ['trend', 'green'], '시즌 프로모션': ['calendar', 'pink'], '성과평가': ['target', 'teal'], '차년도 계획': ['flag', 'green'] };
+  function stepFlowHTML(stats, api) {
+    var I = window.Icons.icon;
+    return '<div class="steps-flow" role="tablist" aria-label="프로젝트 단계">' + stats.map(function (x, i) {
+      var ic = PHASE_ICON[x.ph] || ['flag', 'blue'], nx = stats[i + 1];
+      var desc = x.meetings.map(function (m) { return m.title.replace(/\s*(및|·).*$/, ''); }).slice(0, 2).join(' · ');
+      var gapDays = nx ? Math.round((new Date(nx.from) - new Date(x.to)) / 86400000) : 0;
+      return '<button type="button" class="sf-card' + (flowSel === x.ph ? ' on' : '') + '" data-phase="' + api.esc(x.ph) + '" role="tab" aria-selected="' + (flowSel === x.ph) + '">' +
+        '<span class="sf-badge">STEP ' + ('0' + (i + 1)).slice(-2) + '</span>' +
+        '<span class="ic-wrap sq tone-' + ic[1] + '">' + I(ic[0], 22) + '</span>' +
+        '<b>' + api.esc(x.ph) + '</b><small class="sf-desc">' + api.esc(desc) + '</small>' +
+        '<span class="sf-meta">' + x.from.slice(5).replace('-', '.') + (x.to !== x.from ? '–' + x.to.slice(5).replace('-', '.') : '') + '</span>' +
+        '<span class="sf-nums"><em>회의 ' + x.n + '</em><em>결정 ' + x.dec + '</em>' + (x.urgent ? '<em class="u">⚠ ' + x.urgent + '</em>' : '') + '</span></button>' +
+        (nx ? '<span class="sf-link"><small>' + gapDays + '일</small><i></i></span>' : '');
+    }).join('') + '</div>';
+  }
+  function phaseDetailHTML(R, api, ph) {
+    var I = window.Icons.icon, T = api.tokens();
+    var ms = R.meetings.filter(function (m) { return m.phase === ph; });
+    if (!ms.length) return '';
+    var ids = {}; ms.forEach(function (m) { ids[m.id] = true; });
+    var decs = R.decisions.filter(function (d) { return ids[d.meeting]; });
+    var acts = R.actions.filter(function (a) { return ids[a.meeting]; });
+    var loops = R.loops.filter(function (l) { return ids[l.meeting]; });
+    var issues = R.issues.filter(function (it) { return ids[it.first.meeting]; });
+    var mins = sum(ms.map(function (m) { return m.durationMin || 0; }));
+    var from = ms[0].date, to = ms[ms.length - 1].date, span = Math.round((new Date(to) - new Date(from)) / 86400000) + 1;
+    var idx = A.PHASES.indexOf(ph), ic = PHASE_ICON[ph] || ['flag', 'blue'];
+    var done = acts.filter(function (a) { return a.done; }).length;
+    var pills = [['회의 ' + ms.length + '건', T.s[0]], ['결정 ' + decs.length + '건', T.good], ['업무 ' + acts.length + '건 · 완료 ' + (acts.length ? Math.round(done / acts.length * 100) : 0) + '%', T.s[6]],
+      ['새 이슈 ' + issues.length + '건', T.warning], ['회의 시간 ' + Math.round(mins / 6) / 10 + '시간', T.s[2]]];
+    var urgent = ms.filter(function (m) { return m.nature === '긴급'; }).length;
+    if (urgent) pills.push(['긴급회의 ' + urgent + '건', T.critical]);
+    var h = '<div class="pd">';
+    h += '<div class="pd-head"><span class="ic-wrap lg sq tone-' + ic[1] + '">' + I(ic[0], 24) + '</span><div><span class="sf-badge static">STEP ' + ('0' + (R.meetings.length ? phaseOrder(R, ph) : idx + 1)).slice(-2) + '</span>' +
+      '<h3>' + api.esc(ph) + '</h3><p>' + from.replace(/-/g, '.') + ' – ' + to.replace(/-/g, '.') + ' · ' + span + '일간 · ' + api.esc(api.uniq(ms.map(function (m) { return m.stage; })).join(', ')) + '</p></div>' +
+      '<button type="button" class="mini-btn" data-phase-filter="' + api.esc(ph) + '">' + I('target', 13) + '이 단계만 보기</button></div>';
+    h += '<div class="pd-pills">' + pills.map(function (x) { return '<span><i style="background:' + x[1] + '"></i>' + x[0] + '</span>'; }).join('') + '</div>';
+    h += '<div class="pd-grid">';
+    h += '<div class="pd-col"><h5>' + I('calendar', 14) + '회의</h5>' + ms.map(function (m) {
+      return '<button type="button" class="pd-m" data-open="' + m.id + '"><span class="status st-' + m.nature + '">' + api.NATURE_GLYPH[m.nature] + ' ' + m.nature + '</span><b>' + api.esc(m.title) + '</b><small>' + m.date.replace(/-/g, '.') + ' · ' + api.esc(m.chairName) + ' 주재 · ' + (m.durationMin || '-') + '분 · 참석 ' + m.attendees.length + '명</small></button>';
+    }).join('') + '</div>';
+    h += '<div class="pd-col"><h5>' + I('gavel', 14) + '핵심 결정 ' + decs.length + '</h5>' + decs.slice(0, 6).map(function (d) {
+      return '<div class="pd-d">' + api.chips(d.id) + api.decisionPill(d.status, d.statusRaw) + '<p>' + api.esc(d.text) + '</p></div>';
+    }).join('') + (decs.length > 6 ? '<div class="note">외 ' + (decs.length - 6) + '건 — 의사결정 탭에서 전체 보기</div>' : '') + '</div>';
+    h += '<div class="pd-col"><h5>' + I('target', 14) + '성과 피드백 · 이슈</h5>' + (loops.length ? loops.slice(0, 4).map(function (l) {
+      return '<div class="pd-d">' + api.chips(l.ref) + api.evalPill(l.eval, l.evalRaw) + '<p><b>' + api.esc(short(l.target, 40)) + '</b> → ' + api.esc(short(l.result, 48)) + '</p></div>';
+    }).join('') : '<div class="note">이 단계에서 평가된 성과 피드백이 없습니다</div>') +
+      (issues.length ? '<div class="pd-issues">' + issues.map(function (it) { return '<span title="' + api.esc(it.title) + ' · 현재 ' + it.status + '">' + api.chips(it.id) + api.esc(short(it.title, 14)) + '</span>'; }).join('') + '</div>' : '') + '</div>';
+    h += '</div></div>';
+    return h;
+  }
+  function phaseOrder(R, ph) {
+    var list = A.PHASES.filter(function (p) { return R.meetings.some(function (m) { return m.phase === p; }); });
+    return list.indexOf(ph) + 1;
+  }
+  function bindStepFlow(p, R, api) {
+    function bindDetail() {
+      var box = document.getElementById('phaseDetail');
+      api.bindChips(box);
+      api.$$('[data-open]', box).forEach(function (b) { b.addEventListener('click', function () { api.openMeeting(b.dataset.open); }); });
+      api.$$('[data-phase-filter]', box).forEach(function (b) { b.addEventListener('click', function () { api.setFilter('phases', b.dataset.phaseFilter); }); });
+    }
+    api.$$('.sf-card', p).forEach(function (c) {
+      c.addEventListener('click', function () {
+        flowSel = c.dataset.phase;
+        api.$$('.sf-card', p).forEach(function (x) { var on = x === c; x.classList.toggle('on', on); x.setAttribute('aria-selected', String(on)); });
+        var box = document.getElementById('phaseDetail');
+        box.innerHTML = phaseDetailHTML(R, api, flowSel);
+        bindDetail();
+      });
+    });
+    bindDetail();
+  }
+
   // =====================================================================
   // 09 프로젝트 흐름
   // =====================================================================
@@ -7449,23 +7572,20 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     if (!ms.length) { p.innerHTML = head('프로젝트 진행 흐름', '') + empty(); return; }
     var phaseStats = A.PHASES.map(function (ph) {
       var pm = ms.filter(function (m) { return m.phase === ph; });
-      return { ph: ph, n: pm.length, from: pm.length ? pm[0].date : '', to: pm.length ? pm[pm.length - 1].date : '', dec: sum(pm.map(function (m) { return m.decisions.length; })),
+      return { ph: ph, n: pm.length, meetings: pm, from: pm.length ? pm[0].date : '', to: pm.length ? pm[pm.length - 1].date : '', dec: sum(pm.map(function (m) { return m.decisions.length; })),
         act: sum(pm.map(function (m) { return m.actions.length; })), urgent: pm.filter(function (m) { return m.nature === '긴급'; }).length };
     }).filter(function (x) { return x.n; });
     var h = head('프로젝트 진행 흐름', '전체 회의를 단계별 타임라인으로 봅니다. ● 정기 ▲ 임시 ⚠ 긴급 · 점을 누르면 회의 상세가 열립니다.');
+    if (!flowSel || !phaseStats.some(function (x) { return x.ph === flowSel; })) flowSel = phaseStats[0].ph;
     h += '<div class="grid">';
+    h += card('c12', '단계 흐름 요약 ' + src(), 'HOW IT WENT — 단계를 누르면 그 단계의 회의·결정·성과가 아래에 펼쳐집니다', stepFlowHTML(phaseStats, api) + '<div id="phaseDetail">' + phaseDetailHTML(R, api, flowSel) + '</div>');
     h += card('c12', '단계별 타임라인 ' + src(), '기획 → 개발 → 생산 → 유통 → 런칭 → 성장 → 시즌 프로모션 → 성과평가 → 차년도 계획',
       legend([{ k: '정기회의', c: api.natureColor('정기'), sym: '●' }, { k: '임시회의', c: api.natureColor('임시'), sym: '▲' }, { k: '긴급회의', c: api.natureColor('긴급'), sym: '⚠' }]) + ch('fTimeline', 'h420'));
-    h += card('c12', '단계 흐름 요약', '', '<div style="display:flex;gap:6px;overflow-x:auto;padding:4px 0 6px">' + phaseStats.map(function (x, i) {
-      return '<div style="flex:1 0 118px;background:var(--surface-2);border-radius:10px;padding:10px 12px;position:relative;border-top:3px solid ' + T.seq[Math.min(6, 1 + Math.floor(i * 6 / Math.max(1, phaseStats.length - 1)))] + '">' +
-        '<div style="font-size:11px;color:var(--muted);font-weight:700">STEP ' + (i + 1) + '</div><div style="font-weight:800;font-size:13.5px">' + x.ph + '</div>' +
-        '<div style="font-size:11.5px;color:var(--ink-2)">' + x.from.slice(2).replace(/-/g, '.') + (x.to !== x.from ? '–' + x.to.slice(5).replace('-', '.') : '') + '</div>' +
-        '<div style="font-size:12px;margin-top:6px">회의 <b>' + x.n + '</b> · 결정 <b>' + x.dec + '</b> · 업무 <b>' + x.act + '</b>' + (x.urgent ? ' · <b style="color:var(--critical-ink)">⚠' + x.urgent + '</b>' : '') + '</div></div>';
-    }).join('') + '</div>');
     h += card('c8', '회의별 산출물', '회의마다 나온 결정·업무·이슈 건수', legend([{ k: '결정', c: T.s[0] }, { k: '업무', c: T.s[2] }, { k: '이슈', c: T.s[3] }]) + ch('fOut', 'h280'));
     h += card('c4', '단계별 회의 밀도', '단계별 회의 수 (긴급 포함)', ch('fPhase', 'h280'));
     h += '</div>';
     p.innerHTML = h;
+    bindStepFlow(p, R, api);
     onClickMeeting(api.chart(el('fTimeline'), timelineOpt(R, api, false)), api);
     var cO = api.chart(el('fOut'), {
       grid: { left: 32, right: 12, top: 12, bottom: 28 },
