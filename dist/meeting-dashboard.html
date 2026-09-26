@@ -822,6 +822,15 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 @media (max-width: 1280px) { .kpis { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); } }
 
+/* 이슈 라이프사이클 상단 요약 */
+.life-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 10px; }
+.ls-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: var(--surface-2); font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.ls-chip i { width: 8px; height: 8px; border-radius: 50%; }
+.ls-chip i.dash { width: 14px; height: 0; border-radius: 0; border-top: 2px dashed var(--muted); }
+.ls-chip b { color: var(--ink); font-weight: 800; }
+.ls-bar { flex: 1 1 180px; display: flex; height: 8px; border-radius: 999px; overflow: hidden; gap: 2px; min-width: 140px; }
+.ls-bar i { display: block; height: 100%; }
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script>
@@ -8279,10 +8288,13 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
     } else {
       h += card('c12', '위기', '', empty('선택한 회의에 긴급 위기관리(05A) 기록이 없습니다'));
     }
-    h += card('c8', '미결 이슈 라이프사이클 ' + src(), '이슈가 처음 등장한 회의부터 마지막 기록까지 · 색 = 당시 상태 · 흐린 막대 = 후속 기록 없음',
-      legend([{ k: '오픈', c: T.serious }, { k: '모니터링', c: T.warning }, { k: '종결', c: T.good }, { k: '부분종결', c: T.s[2] }, { k: '이관', c: T.s[6] }, { k: '후속 미기재', c: T.neutral }]) +
-      (I.length ? '<div style="max-height:520px;overflow:auto">' + ch('rLife', 'h480') + '</div>' : empty()));
-    h += card('c4', '이슈 현재 상태', '이슈 1건 = 1칸 · 마지막 기록 기준', I.length ? '<div id="rIss" style="margin-top:8px"></div><div class="big-num" style="margin-top:18px">' + R.summary.untrackedIssues + '<small>건 후속 미기재</small></div><p class="note">종결 기록 없이 이후 회의록에서 사라진 이슈</p>' : empty());
+    var ist0 = issueStatusCounts(R);
+    h += card('c12', '미결 이슈 라이프사이클 ' + src(), '가로축 = 회의 순서 · 점 = 회의록에 기록된 시점 · 막대 색 = 당시 상태 · 점선 = 이후 기록 없음 · 행을 누르면 원문',
+      (I.length ? '<div class="life-sum">' + ist0.filter(function (x) { return x.value; }).map(function (x) {
+        return '<span class="ls-chip"><i style="background:' + x.c + '"></i>' + x.k + '<b>' + x.value + '</b></span>';
+      }).join('') + '<span class="ls-chip muted"><i class="dash"></i>후속 미기재<b>' + R.summary.untrackedIssues + '</b></span>' +
+        '<span class="ls-bar">' + ist0.filter(function (x) { return x.value; }).map(function (x) { return '<i style="flex:' + x.value + ';background:' + x.c + '" title="' + x.k + ' ' + x.value + '건"></i>'; }).join('') + '</span></div>' +
+        ch('rLife', 'h480') : empty()));
     h += '</div>';
     p.innerHTML = h;
     api.bindChips(p);
@@ -8299,40 +8311,52 @@ window.AVATARS = {"김도현":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDo
       });
     }
     if (I.length) {
-      var rows = I.slice().reverse();
-      var lEl = el('rLife'); lEl.style.height = Math.max(240, rows.length * 20 + 50) + 'px';
-      var last = R.all[R.all.length - 1].date;
+      var rows = I.slice();
+      var mIdx = {}; R.all.forEach(function (m, i) { mIdx[m.id] = i; });
+      var nM = R.all.length;
       var col = { '오픈': T.serious, '모니터링': T.warning, '종결': T.good, '부분종결': T.s[2], '이관': T.s[6] };
+      var ROW = 30;
+      var lEl = el('rLife'); lEl.style.height = (rows.length * ROW + 46) + 'px';
       var segs = [];
       rows.forEach(function (it, i) {
         it.history.forEach(function (hh, j) {
           var nx = it.history[j + 1];
-          var end = nx ? nx.date : (/종결|이관/.test(hh.status) ? hh.date : hh.date);
-          segs.push({ value: [i, hh.date, end, hh.status], it: it, h: hh, point: true });
+          var x0 = mIdx[hh.meeting], x1 = nx ? mIdx[nx.meeting] : x0;
+          segs.push({ value: [i, x0, x1, hh.status], it: it, h: hh, first: j === 0 });
         });
-        if (it.untracked) segs.push({ value: [i, it.last.date, last, '후속 미기재'], it: it, h: it.last, tail: true });
+        if (it.untracked) segs.push({ value: [i, mIdx[it.last.meeting], nM - 1, '후속 미기재'], it: it, h: it.last, tail: true });
       });
       var cl = api.chart(lEl, {
-        grid: { left: 170, right: 24, top: 30, bottom: 10 },
-        tooltip: { formatter: function (pp) { var d = pp.data; return '<b>' + d.it.id + '</b> ' + api.esc(d.it.title) + '<br>' + (d.tail ? '마지막 기록 이후 상태 갱신 없음' : d.h.meeting + ' · ' + d.h.raw + (d.h.cond ? '<br><span style="color:' + T.muted + '">' + api.esc(d.h.cond) + '</span>' : '')); } },
-        xAxis: axis(T, { type: 'time', position: 'top', axisLabel: { color: T.muted, fontSize: 10.5, formatter: '{yy}.{MM}' } }),
-        yAxis: axis(T, { type: 'category', data: rows.map(function (it) { return it.id + '  ' + short(it.title, 10); }), axisLine: { show: false }, splitLine: { show: false }, axisLabel: { color: T.ink2, fontSize: 10.5, interval: 0 } }),
+        grid: { left: 220, right: 110, top: 28, bottom: 8 },
+        tooltip: { formatter: function (pp) { var d = pp.data; if (!d || !d.it) return ''; return '<b>' + d.it.id + '</b> ' + api.esc(d.it.title) + '<br>' + (d.tail ? '<span style="color:' + T.muted + '">' + d.h.meeting + ' 이후 상태 갱신 없음</span>' : d.h.meeting + ' · <b>' + d.h.status + '</b> (' + api.esc(d.h.raw) + ')' + (d.h.cond ? '<br><span style="color:' + T.muted + '">' + api.esc(short(d.h.cond, 60)) + '</span>' : '')); } },
+        xAxis: { type: 'value', position: 'top', min: 0, max: nM - 1, interval: 1, axisLine: { show: false }, axisTick: { show: false },
+          splitLine: { show: true, lineStyle: { color: T.grid, type: 'dashed', opacity: 0.7 } },
+          axisLabel: { color: T.muted, fontSize: 10.5, formatter: function (v) { var m = R.all[Math.round(v)]; return m && Math.abs(v - Math.round(v)) < 0.01 ? mno(m.id) : ''; } } },
+        yAxis: [
+          { type: 'category', inverse: true, data: rows.map(function (it) { return it.id + '  ' + short(it.title, 13); }), axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false },
+            splitArea: { show: true, areaStyle: { color: ['transparent', T.surface2] } }, axisLabel: { color: T.ink2, fontSize: 11.5, interval: 0 } },
+          { type: 'category', inverse: true, position: 'right', data: rows.map(function (it) { return it.untracked ? '미기재' : it.status; }), axisLine: { show: false }, axisTick: { show: false },
+            axisLabel: { interval: 0, margin: 16, fontSize: 11, fontWeight: 700, formatter: function (v, i) { var it = rows[i]; var c = it.untracked ? 'mut' : 's' + Object.keys(col).indexOf(it.status); return '{' + c + '|' + (it.untracked ? '● 후속 미기재' : '● ' + it.status) + '}'; },
+              rich: { s0: { color: T.serious }, s1: { color: T.warning }, s2: { color: T.good }, s3: { color: T.s[2] }, s4: { color: T.s[6] }, mut: { color: T.muted, fontWeight: 600 } } } }
+        ],
         series: [{
           type: 'custom', encode: { x: [1, 2], y: 0 },
           renderItem: function (params, e) {
             var i = e.value(0), a = e.coord([e.value(1), i]), b = e.coord([e.value(2), i]), st = e.value(3);
-            var d = segs[params.dataIndex];
-            var hh = e.size([0, 1])[1] * (d.tail ? 0.3 : 0.55);
-            var children = [{ type: 'rect', shape: { x: a[0], y: a[1] - hh / 2, width: Math.max(2, b[0] - a[0]), height: hh, r: 2 }, style: { fill: d.tail ? T.neutral : col[st] || T.neutral, opacity: d.tail ? 0.6 : 1 } }];
-            if (!d.tail) children.push({ type: 'circle', shape: { cx: a[0], cy: a[1], r: 4 }, style: { fill: col[st] || T.neutral, stroke: T.surface, lineWidth: 2 } });
-            return { type: 'group', children: children };
+            var d = segs[params.dataIndex], c = col[st] || T.neutral;
+            if (d.tail) {
+              if (b[0] - a[0] < 2) return null;
+              return { type: 'line', shape: { x1: a[0] + 6, y1: a[1], x2: b[0], y2: b[1] }, style: { stroke: T.neutral, lineWidth: 1.5, lineDash: [3, 4] } };
+            }
+            var hh = 10, ch = [];
+            if (b[0] > a[0]) ch.push({ type: 'rect', shape: { x: a[0], y: a[1] - hh / 2, width: b[0] - a[0], height: hh, r: hh / 2 }, style: { fill: c, opacity: 0.85 } });
+            ch.push({ type: 'circle', shape: { cx: a[0], cy: a[1], r: 6 }, style: { fill: T.surface, stroke: c, lineWidth: 3 } });
+            return { type: 'group', children: ch };
           },
-          data: segs
+          data: segs, z: 3
         }]
       });
-      if (cl) cl.on('click', function (e) { api.openEntity(e.data.it.id); });
-      var ist = issueStatusCounts(R);
-      el('rIss').innerHTML = IG().waffle(ist.filter(function (x) { return x.value; }).map(function (x) { return { k: x.k, v: x.value, c: x.c }; }), { cols: 8 });
+      if (cl) cl.on('click', function (e) { if (e.data && e.data.it) api.openEntity(e.data.it.id); });
     }
   }
 

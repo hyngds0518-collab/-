@@ -813,3 +813,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 /* KPI 카드 5열 (10개 = 2줄) */
 .kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 @media (max-width: 1280px) { .kpis { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); } }
+
+/* 이슈 라이프사이클 상단 요약 */
+.life-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 10px; }
+.ls-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: var(--surface-2); font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.ls-chip i { width: 8px; height: 8px; border-radius: 50%; }
+.ls-chip i.dash { width: 14px; height: 0; border-radius: 0; border-top: 2px dashed var(--muted); }
+.ls-chip b { color: var(--ink); font-weight: 800; }
+.ls-bar { flex: 1 1 180px; display: flex; height: 8px; border-radius: 999px; overflow: hidden; gap: 2px; min-width: 140px; }
+.ls-bar i { display: block; height: 100%; }
