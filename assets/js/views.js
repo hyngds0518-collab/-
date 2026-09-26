@@ -1028,9 +1028,24 @@
       el('dConflict').innerHTML = pairs.slice(0, 8).map(function (x, i) {
         var d1 = x.k[0], d2 = x.k[1];
         var ic = function (d) { return '<span class="ic-wrap sm tone-' + (I.DEPT_TONE[d] || 'slate') + '" title="' + api.esc(d) + '">' + I.icon(I.DEPT_ICON[d] || 'users', 15) + '</span>'; };
-        return '<div class="pair"><span class="rk">' + (i + 1) + '</span><span class="pd2">' + ic(d1) + ic(d2) + '</span><span class="pn"><b>' + api.esc(A.DEPT_SHORT[d1] || d1) + ' ↔ ' + api.esc(A.DEPT_SHORT[d2] || d2) + '</b>' +
+        return '<div class="pair" role="button" tabindex="0" data-i="' + i + '" title="관련 회의록 보기"><span class="rk">' + (i + 1) + '</span><span class="pd2">' + ic(d1) + ic(d2) + '</span><span class="pn"><b>' + api.esc(A.DEPT_SHORT[d1] || d1) + ' ↔ ' + api.esc(A.DEPT_SHORT[d2] || d2) + '</b>' +
           '<span class="pbar"><i style="width:' + (x.v / pm * 100) + '%;background:linear-gradient(90deg,#fbc9ad,#f4a3a3)"></i></span></span><em>' + x.v + '<small>건</small></em></div>';
       }).join('');
+      api.$$('.pair', el('dConflict')).forEach(function (row) {
+        function open() {
+          var x = pairs[+row.dataset.i], d1 = x.k[0], d2 = x.k[1];
+          var rel = ds.filter(function (d) { return d.hasDissent && d.depts.indexOf(d1) >= 0 && d.depts.indexOf(d2) >= 0; });
+          var nm = (A.DEPT_SHORT[d1] || d1) + ' ↔ ' + (A.DEPT_SHORT[d2] || d2);
+          api.openDrawer(nm + ' 이견 ' + rel.length + '건', '관련 회의 ' + api.uniq(rel.map(function (d) { return d.meeting; })).length + '회 · 회의 ID를 누르면 전체 회의록',
+            '<div class="dsec wide">' + rel.map(function (d) {
+              var m = api.findMeeting(d.meeting);
+              return '<div class="ditem"><div class="h">' + api.chips(d.meeting) + '<b>' + api.esc(d.topic) + '</b><span class="note">' + api.esc(d.date || '') + (m ? ' · ' + api.esc(m.title) : '') + '</span></div>' +
+                '<p><b>논의</b> ' + api.esc(d.discussion) + '</p><p><b>이견·대안</b> ' + api.esc(d.dissent) + '</p><p><b>결론</b> ' + api.esc(d.conclusion) + ' <span class="pill">' + api.esc(d.resolution) + '</span></p></div>';
+            }).join('') + '</div>');
+        }
+        row.addEventListener('click', open);
+        row.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+      });
     } else el('dConflict').innerHTML = empty('부서 간 이견 기록이 없습니다');
 
     var rc = resKeys.map(function (k, i) { return { k: k, value: ds.filter(function (d) { return d.resolution === k; }).length, c: resCol[i] }; });
@@ -1075,13 +1090,14 @@
     var withCond = D.filter(function (d) { return d.conditional; }).length;
     var lvl = { '대표·긴급 승인': 0, '팀 확정': 0 }; D.forEach(function (d) { lvl[d.level]++; });
     var h = head('의사결정 현황', 'Decision Register를 모아 결정 상태·승인 레벨·조건·결정 간 변경 흐름을 추적합니다.');
-    h += '<div class="tiles">' + tile('총 의사결정', D.length, '건', R.meetings.length + '개 회의') +
+    h += '<div class="tiles t7">' + tile('총 의사결정', D.length, '건', R.meetings.length + '개 회의') +
       ['확정', '조건부', '잠정', '보류'].map(function (k) { return tile('<i class="dot" style="background:' + api.decisionColor(k) + '"></i>' + k, byS[k] || 0, '건', pctTxt((byS[k] || 0) / D.length * 100)); }).join('') +
-      tile('<b style="color:var(--critical-ink)">↺</b> 번복·방향 변경 ' + (R.ann ? ai('AI') : ''), rev.length, '건', rev.map(function (l) { return l.from + '→' + l.to; }).join(', ') || '감지되지 않음') +
-      tile('재검토 시점 명시', D.filter(function (d) { return d.review; }).length, '건', '조건에 날짜·월이 적힌 결정') + '</div>';
+      tile('<b style="color:var(--critical-ink)">↺</b> 번복·변경', rev.length, '건', rev.map(function (l) { return l.from + '→' + l.to; }).join(', ') || '감지되지 않음') +
+      tile('재검토 명시', D.filter(function (d) { return d.review; }).length, '건', '조건에 날짜·월 기재') + '</div>';
     h += '<div class="grid">';
-    h += card('c8', '회의별 의사결정 도트 매트릭스 ' + src(), '점 1개 = 결정 1건 · 색 = 상태 · 점을 누르면 원문', legend(['확정', '조건부', '잠정', '보류'].map(function (k) { return { k: k, c: api.decisionColor(k) }; })) + ch('decBar', 'h280'));
-    h += card('c4', '결정 상태 비율', '상태별 비중 링', IG().ringSet(['확정', '조건부', '잠정', '보류'].map(function (k) { return { k: k, pct: (byS[k] || 0) / D.length * 100, color: api.decisionColor(k), value: (byS[k] || 0) + '건' }; }), T, 88) +
+    var DPAS = { '확정': '#8fb0f7', '조건부': '#8bd6bd', '잠정': '#f7cf85', '보류': '#cdd4e0' };
+    h += card('c8', '회의별 의사결정 ' + src(), '회의마다 내린 결정 수 · 색 = 상태 · 막대를 누르면 원문', legend(['확정', '조건부', '잠정', '보류'].map(function (k) { return { k: k, c: DPAS[k] }; })) + ch('decBar', 'h360'));
+    h += card('c4', '결정 상태 비율', '상태별 비중 링', '<div class="ring-set two">' + IG().ringSet(['확정', '조건부', '잠정', '보류'].map(function (k) { return { k: k, pct: (byS[k] || 0) / D.length * 100, color: api.decisionColor(k), value: (byS[k] || 0) + '건' }; }), T, 92).replace('<div class="ring-set">', '').replace(/<\/div>$/, '') + '</div>' +
       '<div style="margin-top:16px"><div class="card-sub" style="margin-bottom:8px;font-weight:700;color:var(--ink-2)">승인 레벨</div>' + IG().progressRows([{ k: '대표·긴급 승인', pct: lvl['대표·긴급 승인'] / D.length * 100, c: T.ink, label: lvl['대표·긴급 승인'] + '건' }, { k: '팀 확정', pct: lvl['팀 확정'] / D.length * 100, c: T.s[0], label: lvl['팀 확정'] + '건' }]) + '</div>');
     h += card('c12', '결정 변경 흐름 ' + (R.ann ? ai() : src()), '앞선 결정이 어떻게 구체화·유지·연기·번복됐는지 (가로축 = 회의 순서)',
       legend(['구체화', '유지', '연기', '예외', '번복', '연계'].map(function (k) { return { k: k, c: linkColor(T, k) }; })) + (links.length ? ch('decGraph', 'h420') : empty('결정 간 연결을 찾지 못했습니다')));
@@ -1100,20 +1116,21 @@
     api.bindChips(p);
 
     var ms = R.meetings.filter(function (m) { return m.decisions.length; });
-    var dd = [], maxN = 0;
-    ms.forEach(function (m, x) {
-      var list = ['확정', '조건부', '잠정', '보류'].reduce(function (a, k) { return a.concat(D.filter(function (d) { return d.meeting === m.id && d.status === k; })); }, []);
-      maxN = Math.max(maxN, list.length);
-      list.forEach(function (d, y) { dd.push({ value: [x, y + 1], id: d.id, d: d, itemStyle: { color: api.decisionColor(d.status) } }); });
-    });
+    var stK = ['확정', '조건부', '잠정', '보류'];
     var cB = api.chart(el('decBar'), {
-      grid: { left: 30, right: 10, top: 12, bottom: 28 },
-      tooltip: { formatter: function (pp) { var d = pp.data.d; return '<b>' + d.id + '</b> · ' + d.statusRaw + '<br>' + api.esc(d.text) + '<br><span style="color:' + T.muted + '">' + d.meeting + ' · ' + d.date + '</span>'; } },
+      grid: { left: 30, right: 10, top: 16, bottom: 28 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(148,163,184,.12)' } },
+        formatter: function (ps) { var m = ms[ps[0].dataIndex]; return '<b>' + m.id + '</b> · ' + api.esc(m.title) + '<br>' + ps.filter(function (x) { return x.value; }).map(function (x) { return x.marker + x.seriesName + ' ' + x.value + '건'; }).join('<br>'); } },
       xAxis: axis(T, { type: 'category', data: ms.map(function (m) { return mno(m.id); }), splitLine: { show: false }, axisLabel: { color: T.muted, interval: 0 } }),
-      yAxis: axis(T, { type: 'value', min: 0, max: maxN + 0.6, interval: 1, axisLine: { show: false }, axisLabel: { color: T.muted, formatter: function (v) { return v >= 1 && v <= maxN ? v : ''; } } }),
-      series: [{ type: 'scatter', symbolSize: 15, data: dd, itemStyle: { borderColor: T.surface, borderWidth: 2 } }]
+      yAxis: axis(T, { type: 'value', minInterval: 1, axisLine: { show: false }, axisLabel: { color: T.muted } }),
+      series: stK.map(function (k, si) {
+        return { name: k, type: 'bar', stack: 'd', barWidth: 18,
+          itemStyle: { color: DPAS[k], borderColor: T.surface, borderWidth: 1.5, borderRadius: 4 },
+          data: ms.map(function (m) { return { value: D.filter(function (d) { return d.meeting === m.id && d.status === k; }).length, mid: m.id }; }) };
+      })
     });
-    if (cB) cB.on('click', function (e) { api.openEntity(e.data.id); });    onClickMeeting(cB, api);
+    if (cB) cB.on('click', function (e) { api.openMeeting(ms[e.dataIndex].id); });
+    
     if (links.length) {
       var gEl2 = el('decGraph');
       var comps = decisionGraphOpt(R, api, links);

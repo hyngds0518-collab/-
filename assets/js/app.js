@@ -552,7 +552,7 @@
     setFilter: function (k, v) { S.f = emptyFilters(); if (Array.isArray(S.f[k])) S.f[k] = [].concat(v); else S.f[k] = v; refresh(); },
     selectMeetings: function (ids) { S.f = emptyFilters(); S.f.meetings = [].concat(ids || []); refresh(); },
     render: renderPanel, avatar: avatar, meetingHTML: meetingHTML, meetingSub: meetingSub, findMeeting: findMeeting, icon: window.Icons.icon,
-    toast: toast
+    toast: toast, openDrawer: openDrawer
   };
   window.DashboardAPI = API;
 

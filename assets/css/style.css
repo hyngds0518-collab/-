@@ -799,3 +799,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .pair .pbar { height: 7px; }
 .pair em { font-style: normal; font-size: 17px; font-weight: 800; text-align: right; letter-spacing: -.02em; }
 .pair em small { font-size: 11px; color: var(--ink-2); margin-left: 1px; }
+
+/* 의사결정 타일 7개 한 줄 */
+.tiles.t7 { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; }
+.tiles.t7 .tile { padding: 16px 14px; gap: 10px; }
+.tiles.t7 .tile .ic-wrap { width: 40px; height: 40px; flex: none; }
+.tiles.t7 .tile .v { font-size: 23px; }
+@media (max-width: 1280px) { .tiles.t7 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .tiles.t7 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ring-set.two { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 8px; margin-top: 4px; }
+.pair[role=button] { cursor: pointer; transition: background .15s, box-shadow .15s; }
+.pair[role=button]:hover, .pair[role=button]:focus-visible { background: var(--t-blue-bg, var(--surface-2)); box-shadow: inset 0 0 0 1px var(--border); outline: none; }
