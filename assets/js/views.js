@@ -1616,9 +1616,9 @@
     h += card('c7', '부서 협업 네트워크 ' + ai(), '선 굵기 = 협업 강도 (공동 업무 ×2 + 같은 논의에서 함께 언급) · 원 크기 = 활동량 · 부서를 가리키면 연결만 강조',
       legend([{ k: '공동 업무 있음', c: T.s[0] }, { k: '논의만 함께', c: T.axis }, { k: '외부 조직', c: T.neutral }]) + ch('dNet', 'h420'));
     h += card('c5', '협업이 많은 부서 쌍 Top 5', '', '<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">' + top.map(function (e, i) {
-      return '<div style="display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;padding:8px 10px;background:var(--surface-2);border-radius:10px"><b style="color:var(--muted)">' + (i + 1) + '</b>' +
-        '<span><b>' + api.esc(A.DEPT_SHORT[e.a] || e.a) + ' ↔ ' + api.esc(A.DEPT_SHORT[e.b] || e.b) + '</b><br><span class="note" style="margin:0">공동 업무 ' + e.action + '건 · 같은 논의 ' + e.discussion + '건</span></span><b>' + e.weight + '</b></div>';
-    }).join('') + '</div>' + '<p class="note">협업 강도는 원문의 공동 담당자·논의 언급을 규칙 기반으로 집계한 값입니다.</p>');
+      return '<div class="cpair" role="button" tabindex="0" data-i="' + i + '" title="상세 보기"><b style="color:var(--muted)">' + (i + 1) + '</b>' +
+        '<span><b>' + api.esc(A.DEPT_SHORT[e.a] || e.a) + ' ↔ ' + api.esc(A.DEPT_SHORT[e.b] || e.b) + '</b><br><span class="note" style="margin:0">공동 업무 ' + e.action + '건 · 같은 논의 ' + e.discussion + '건</span></span><b>' + e.weight + '</b><span class="chev">›</span></div>';
+    }).join('') + '</div>' + '<p class="note">항목을 누르면 함께한 업무·논의를 볼 수 있습니다. 협업 강도는 원문의 공동 담당자·논의 언급을 규칙 기반으로 집계한 값입니다.</p>');
     h += card('c12', '부서별 핵심 지표', '같은 부서 순서로 네 지표를 나란히 비교 (각 지표는 자기 단위)', ch('dMulti', 'h360'));
     h += card('c4', '부서 역량 레이더 ' + ai(), '상위 4개 부서 · 각 축은 최댓값 대비 비율', ch('dRadar', 'h360'));
     h += card('c4', '부서 × 논의 주제 ' + ai(), '부서가 언급된 논의의 주제 분포', ch('dTopicHeat', 'h360'));
@@ -1631,6 +1631,24 @@
     h += '</div>';
     p.innerHTML = h;
 
+    api.$$('.cpair', p).forEach(function (row) {
+      function open() {
+        var e = top[+row.dataset.i], a = e.a, b = e.b;
+        var acts = R.actions.filter(function (x) { return x.ownerDepts.indexOf(a) >= 0 && x.ownerDepts.indexOf(b) >= 0; });
+        var dis = R.discussions.filter(function (x) { return x.depts.indexOf(a) >= 0 && x.depts.indexOf(b) >= 0; });
+        var nm = (A.DEPT_SHORT[a] || a) + ' ↔ ' + (A.DEPT_SHORT[b] || b);
+        var body = '<div class="sel-counts" style="grid-template-columns:repeat(3,1fr)"><div><b>' + e.weight + '</b><small>협업 강도</small></div><div><b>' + acts.length + '</b><small>공동 업무</small></div><div><b>' + dis.length + '</b><small>같은 논의</small></div></div>';
+        body += '<div class="dsec wide"><h4>공동 업무 ' + acts.length + '건</h4>' + (acts.length ? acts.map(function (x) {
+          return '<div class="ditem"><div class="h">' + api.chips(x.id) + api.actionPill(x.status, x.delayed) + '<span class="note">' + api.esc(x.meeting) + ' · 마감 ' + api.esc(x.due || '-') + '</span></div><p><b>' + api.esc(x.task) + '</b></p><p>담당 ' + api.esc(x.owners.join(', ')) + '</p></div>';
+        }).join('') : '<p class="note">공동 담당 업무가 없습니다</p>') + '</div>';
+        body += '<div class="dsec wide"><h4>함께 언급된 논의 ' + dis.length + '건</h4>' + (dis.length ? dis.map(function (x) {
+          return '<div class="ditem"><div class="h">' + api.chips(x.meeting) + '<b>' + api.esc(x.topic) + '</b><span class="note">' + api.esc(x.date || '') + '</span></div><p><b>논의</b> ' + api.esc(short(x.discussion, 140)) + '</p>' + (x.dissent ? '<p><b>이견</b> ' + api.esc(short(x.dissent, 120)) + '</p>' : '') + '<p><b>결론</b> ' + api.esc(x.conclusion) + '</p></div>';
+        }).join('') : '<p class="note">함께 언급된 논의가 없습니다</p>') + '</div>';
+        api.openDrawer(nm + ' 협업', '공동 업무 ×2 + 같은 논의 = 협업 강도 ' + e.weight + ' · ID를 누르면 원문', body);
+      }
+      row.addEventListener('click', open);
+      row.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } });
+    });
     var net = api.chart(el('dNet'), networkOpt(R, api, false));
     if (net) net.on('click', function (e) { if (e.dataType === 'node') api.setFilter('depts', e.name); });
 
@@ -1724,29 +1742,50 @@
   }
 
   var CAT_TONE = { '반복되는 문제': 'orange', '의사결정 패턴': 'blue', '성과 학습': 'green', '병목': 'amber', '리스크 신호': 'red', '성과 요약': 'purple', '자동 분석': 'slate' };
-  function insCard(i, api) {
-    return '<div class="ins"><div class="cat"><span class="ic-wrap tone-' + (CAT_TONE[i.cat] || 'slate') + '">' + (ICONS[i.icon] || ICONS.auto) + '</span>' + api.esc(i.cat) + '</div>' +
-      '<div class="metric"><b>' + api.esc(i.metric) + '</b><span>' + api.esc(i.metricLabel || '') + '</span></div><h4>' + api.esc(i.title) + '</h4><p>' + api.esc(i.body) + '</p>' +
-      (i.evidence && i.evidence.length ? '<div class="ev"><span class="note" style="margin:0 4px 0 0">근거</span>' + api.chips(i.evidence.join(' ')) + '</div>' : '') + '</div>';
+  function insCard(i, api, idx) {
+    var n = (i.evidence || []).length;
+    return '<div class="ins mini" role="button" tabindex="0" data-idx="' + idx + '"><div class="cat"><span class="ic-wrap tone-' + (CAT_TONE[i.cat] || 'slate') + '">' + (ICONS[i.icon] || ICONS.auto) + '</span>' + api.esc(i.cat) + '<span class="go">›</span></div>' +
+      '<div class="metric"><b>' + api.esc(i.metric) + '</b><span>' + api.esc(i.metricLabel || '') + '</span></div><h4>' + api.esc(i.title) + '</h4>' +
+      '<div class="foot">' + (n ? '근거 ' + n + '건' : '규칙 기반 집계') + '<span>자세히</span></div></div>';
+  }
+  function evidenceHTML(id, R, api) {
+    var d = R.decisions.filter(function (x) { return x.id === id; })[0];
+    if (d) return '<div class="ditem"><div class="h">' + api.chips(id) + api.decisionPill(d.status, d.statusRaw) + '<span class="note">' + d.meeting + ' · ' + d.date + '</span></div><p><b>' + api.esc(d.text) + '</b></p>' + (d.condition && d.condition !== '-' ? '<p>조건: ' + api.esc(d.condition) + '</p>' : '') + '</div>';
+    var a = R.actions.filter(function (x) { return x.id === id; })[0];
+    if (a) return '<div class="ditem"><div class="h">' + api.chips(id) + api.actionPill(a.status, a.delayed) + '<span class="note">' + a.meeting + ' · 마감 ' + (a.due || '-') + '</span></div><p><b>' + api.esc(a.task) + '</b></p><p>담당 ' + api.esc(a.owners.join(', ')) + (a.followNote ? ' · 후속: ' + api.esc(a.followNote) : '') + '</p></div>';
+    var it = R.issues.filter(function (x) { return x.id === id; })[0];
+    if (it) return '<div class="ditem"><div class="h">' + api.chips(id) + '<span class="pill">' + api.esc(it.status) + '</span><span class="note">' + it.history.length + '회 기록 · ' + it.history.map(function (h) { return mno(h.meeting); }).join('→') + '</span></div><p><b>' + api.esc(it.title) + '</b></p></div>';
+    var m = api.findMeeting(id);
+    if (m) return '<div class="ditem"><div class="h">' + api.chips(id) + '<span class="note">' + api.esc(m.date) + ' · ' + api.esc(m.nature) + '</span></div><p><b>' + api.esc(m.title) + '</b></p><p>' + api.esc(short(m.purpose || '', 120)) + '</p></div>';
+    return '<div class="ditem"><div class="h">' + api.chips(id) + '</div></div>';
+  }
+  function openInsight(i, R, api) {
+    var ev = i.evidence || [];
+    var body = '<div class="ins-detail"><div class="cat"><span class="ic-wrap tone-' + (CAT_TONE[i.cat] || 'slate') + '">' + (ICONS[i.icon] || ICONS.auto) + '</span>' + api.esc(i.cat) + '</div>' +
+      '<div class="metric"><b>' + api.esc(i.metric) + '</b><span>' + api.esc(i.metricLabel || '') + '</span></div><p class="lead">' + api.esc(i.body) + '</p></div>';
+    body += '<div class="dsec wide"><h4>근거 ' + ev.length + '건</h4>' + (ev.length ? ev.map(function (id) { return evidenceHTML(id, R, api); }).join('') : '<p class="note">현재 필터의 회의 데이터로 실시간 집계한 값입니다</p>') + '</div>';
+    api.openDrawer(i.title, api.esc(i.cat) + ' · ID를 누르면 해당 회의록 원문', body);
   }
 
   function insight(p, R, api) {
     var cur = R.ann ? R.ann.insights : [];
     var auto = autoInsights(R, api);
-    var cats = api.uniq(cur.map(function (i) { return i.cat; }));
-    var h = head('AI 인사이트', '단순 요약(무슨 일이 있었나)과 인사이트(그래서 무엇을 해야 하나)를 구분합니다. 모든 인사이트에는 근거 회의·ID가 달려 있습니다.');
+    var all = cur.concat(auto);
+    var h = head('AI 인사이트', '단순 요약(무슨 일이 있었나)과 인사이트(그래서 무엇을 해야 하나)를 구분합니다. 카드를 누르면 상세 내용과 근거 회의·ID를 볼 수 있습니다.');
     h += '<div class="summary-vs" style="margin-bottom:14px"><div class="sv"><h5>요약 (Summary)</h5><p>“11/13 회의에서 광고 CTR 1.46%를 기록했다.” — 기록된 사실을 줄인 것</p></div>' +
       '<div class="sv"><h5>인사이트 (Insight)</h5><p>“UGC 소재 CTR이 설명형의 2.3배 → 다음 캠페인은 UGC 비중 확대가 필요하다.” — 여러 회의를 교차해 패턴·원인·행동을 도출한 것</p></div></div>';
     if (cur.length) {
       h += '<div class="panel-head" style="margin-top:6px"><div><h2 style="font-size:16px">원문 교차 분석 인사이트 ' + ai() + '</h2><p>전체 회의록 기준 · ' + cur.length + '개</p></div></div>';
-      cats.forEach(function (c) {
-        h += '<div style="margin:14px 0 8px;font-size:13px;font-weight:800">' + api.esc(c) + '</div><div class="insights">' + cur.filter(function (i) { return i.cat === c; }).map(function (i) { return insCard(i, api); }).join('') + '</div>';
-      });
+      h += '<div class="insights mini">' + cur.map(function (i, k) { return insCard(i, api, k); }).join('') + '</div>';
     }
     h += '<div class="panel-head" style="margin-top:22px"><div><h2 style="font-size:16px">필터 반영 자동 인사이트 ' + ai('규칙 기반') + '</h2><p>현재 선택한 회의 ' + R.meetings.length + '건으로 실시간 계산 · 업로드한 회의록에도 적용됩니다</p></div></div>';
-    h += auto.length ? '<div class="insights">' + auto.map(function (i) { return insCard(i, api); }).join('') + '</div>' : empty();
+    h += auto.length ? '<div class="insights mini">' + auto.map(function (i, k) { return insCard(i, api, cur.length + k); }).join('') + '</div>' : empty();
     p.innerHTML = h;
-    api.bindChips(p);
+    api.$$('.ins.mini', p).forEach(function (c) {
+      var fn = function () { openInsight(all[+c.dataset.idx], R, api); };
+      c.addEventListener('click', fn);
+      c.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } });
+    });
   }
 
   // =====================================================================
