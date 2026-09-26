@@ -207,14 +207,14 @@
 
   // ---------- 탭 ----------
   var TABS = [
-    ['overview', '개요', 'dashboard', '대시보드'], ['basic', '회의 기본정보', 'file'], ['meetings', '회의 목록', 'agenda'], ['flow', '프로젝트 흐름', 'route'],
+    ['overview', '개요', 'dashboard', '대시보드'], ['basic', '회의 기본정보', 'file'], ['meetings', '회의 목록', 'agenda', null, 'foot'], ['flow', '프로젝트 흐름', 'route'],
     ['discussion', '안건·논의', 'chat', '분석'], ['decision', '의사결정', 'gavel'], ['action', '실행 관리', 'list'], ['tracking', '성과 추적', 'target'],
     ['kpi', 'KPI 성과', 'trend'], ['risk', '위기·리스크', 'shield'], ['dept', '부서 분석', 'users'],
     ['insight', 'AI 인사이트', 'sparkles', '인사이트'], ['next', '차년도 기획', 'flag']
   ];
   function renderTabs() {
     var I = window.Icons.icon;
-    $('#tabs').innerHTML = TABS.map(function (t) {
+    $('#tabs').innerHTML = TABS.filter(function (t) { return !t[4]; }).map(function (t) {
       var cnt = t[0] === 'risk' && S.R ? S.R.summary.crises : t[0] === 'insight' && S.R && S.R.ann ? S.R.ann.insights.length : 0;
       return (t[3] ? '<div class="nav-sep">' + t[3] + '</div>' : '') +
         '<button type="button" class="tab" role="tab" data-tab="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' + I(t[2], 18) + '<span>' + t[1] + '</span>' +
@@ -225,6 +225,7 @@
   function go(tab) {
     S.tab = tab; persist();
     $$('.tab').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === tab)); });
+    var sm = $('#sideMeetings'); if (sm) sm.setAttribute('aria-current', tab === 'meetings' ? 'page' : 'false');
     var active = $('.tab[aria-selected="true"]');
     if (active && window.innerWidth <= 980) active.scrollIntoView({ block: 'nearest', inline: 'center' });
     var t = TABS.filter(function (x) { return x[0] === tab; })[0];
@@ -562,7 +563,8 @@
   $('#upIcon').outerHTML = I('upload', 16);
   $('#btnExport').innerHTML = I('download', 18);
   $('#btnTheme').innerHTML = I('moon', 18);
-  $('#sideHelpIcon').innerHTML = I('file', 18);
+  $('#sideHelpIcon').innerHTML = I('agenda', 18);
+  $('#sideMeetings').addEventListener('click', function () { go('meetings'); });
   $('#promoArt').innerHTML = '<span class="ic-wrap lg tone-green" style="box-shadow:0 8px 18px rgba(22,163,74,.18)">' + I('shieldCheck', 28) + '</span>';
   var qt;
   $('#fQ').addEventListener('input', function (e) { clearTimeout(qt); qt = setTimeout(function () { S.f.q = e.target.value.trim(); refresh(true); }, 250); });

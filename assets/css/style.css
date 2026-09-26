@@ -862,3 +862,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .brief-body > b { font-size: 12px; color: var(--accent); letter-spacing: .02em; }
 .brief-body p { margin: 0; font-size: 13.5px; line-height: 1.65; color: var(--ink-2); }
 .brief-body p b { color: var(--ink); font-weight: 700; }
+/* 사이드바 회의 목록 버튼 */
+button.side-help { width: 100%; text-align: left; background: var(--surface); cursor: pointer; font: inherit; color: inherit; transition: border-color .15s, background .15s, box-shadow .15s; }
+button.side-help > div { flex: 1; min-width: 0; }
+button.side-help .sh-go { color: var(--muted); font-size: 20px; line-height: 1; }
+button.side-help:hover { border-color: var(--border-strong); background: var(--surface-2); }
+button.side-help[aria-current="page"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: var(--t-blue-bg); }
+button.side-help[aria-current="page"] b { color: var(--accent); }

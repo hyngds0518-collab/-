@@ -262,7 +262,8 @@
   function addMonth(m, k) { var y = +m.slice(0, 4), mo = +m.slice(5, 7) - 1 + k; y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12; return y + '-' + ('0' + (mo + 1)).slice(-2); }
   function selIds(api) { return api.S.f.meetings || []; }
 
-  function calendarCard(R, api) {
+  function calendarCard(R, api, opt) {
+    opt = opt || {};
     var I = window.Icons.icon, all = R.all;
     var months = api.uniq(all.map(function (m) { return ym(m.date); })).sort();
     var sel = selIds(api);
@@ -299,7 +300,7 @@
       '<div class="cs blue"><div><small>이달의 회의</small><b>' + inMonth.length + '</b></div><span class="ic-wrap">' + I('users', 18) + '</span></div>' +
       '<div class="cs green"><div><small>의사결정</small><b>' + dec + '</b></div><span class="ic-wrap">' + I('check', 18) + '</span></div>' +
       '<div class="cs orange"><div><small>업무 지시</small><b>' + act + '</b></div><span class="ic-wrap">' + I('clock', 18) + '</span></div>' +
-      '<button type="button" class="view-all" data-go="basic" style="justify-content:center;margin-top:4px">전체 회의 보기 ' + I('arrowRight', 14) + '</button>' +
+      (opt.inList ? '' : '<button type="button" class="view-all" data-go="meetings" style="justify-content:center;margin-top:4px">전체 회의 보기 ' + I('arrowRight', 14) + '</button>') +
       '</div></div>';
     return card('c7', '회의 캘린더', '회의한 날짜에 회의 제목이 표시됩니다', body, { tools: sel.length ? '<button type="button" class="mini-btn" data-clear-sel>' + I('x', 13) + '선택 해제</button>' : '' });
   }
@@ -348,7 +349,8 @@
     api.$$('[data-clear-sel]', p).forEach(function (b) { b.addEventListener('click', function () { api.selectMeetings([]); }); });
   }
 
-  function scheduleCard(R, api) {
+  function scheduleCard(R, api, opt) {
+    opt = opt || {};
     var I = window.Icons.icon, sel = selIds(api);
     var selM = sel.length === 1 ? meetingById(R, sel[0]) : null;
     var list = R.all.filter(function (m) { return ym(m.date) === cal.month; });
@@ -368,7 +370,7 @@
       h += '<div class="sched">' + (list.length ? list.map(function (m) { return schedRow(m, api, sel); }).join('') : empty('이 달에는 회의가 없습니다')) + '</div>';
     }
     var title = selM ? '선택한 회의' : (+cal.month.slice(5, 7)) + '월 회의 일정';
-    return card('c5', title, selM ? '회의록 요약 · 자세히 보기를 누르면 회의록이 아래에 펼쳐집니다' : '행을 누르면 해당 회의로 대시보드가 바뀝니다', h, { tools: selM ? '<button type="button" class="mini-btn" data-clear-sel>' + I('x', 13) + '전체 보기</button>' : viewAll('basic') });
+    return card('c5', title, selM ? '회의록 요약 · 자세히 보기를 누르면 회의록이 아래에 펼쳐집니다' : '행을 누르면 해당 회의로 대시보드가 바뀝니다', h, { tools: selM ? '<button type="button" class="mini-btn" data-clear-sel>' + I('x', 13) + '전체 보기</button>' : (opt.inList ? '' : viewAll('meetings')) });
   }
   function schedRow(m, api, sel) {
     var I = window.Icons.icon;
@@ -778,9 +780,11 @@
   function meetings(p, R, api) {
     var ms = R.meetings;
     if (!ms.length) { p.innerHTML = head('회의 목록', '') + empty(); return; }
-    var h = head('회의 목록', '전체 회의를 월별로 모았습니다. 행을 누르면 회의록 전체 구조(안건·결정·업무·이슈)가 열립니다.');
+    var h = head('회의 목록', '캘린더에서 날짜를 누르면 그 회의 기준으로 바뀌고, 자세히를 누르면 회의록이 아래에 펼쳐집니다. 아래에는 전체 회의를 월별로 모았습니다.');
     var months = api.uniq(ms.map(function (m) { return m.date.slice(0, 7); }));
-    h += '<div class="grid">';
+    h += '<div class="grid">' + calendarCard(R, api, { inList: true }) + scheduleCard(R, api, { inList: true }) + '</div>';
+    h += minutesPanel(R, api);
+    h += '<div class="grid" style="margin-top:16px">';
     h += card('c12', '회의 목록 ' + src(), ms.length + '건 · ' + months.length + '개월',
       '<div class="sched">' + ms.map(function (m, i) {
         var mh = (i === 0 || ms[i - 1].date.slice(0, 7) !== m.date.slice(0, 7)) ? '<div class="month-h">' + m.date.slice(0, 4) + '년 ' + (+m.date.slice(5, 7)) + '월 <small>' + ms.filter(function (x) { return x.date.slice(0, 7) === m.date.slice(0, 7); }).length + '건</small></div>' : '';
@@ -795,6 +799,7 @@
       }).join('') + '</div>');
     h += '</div>';
     p.innerHTML = h;
+    bindOverviewTop(p, R, api);
     api.$$('.srow[data-mid]', p).forEach(function (b) {
       b.addEventListener('click', function () { api.openMeeting(b.dataset.mid); });
       b.addEventListener('keydown', function (e) { if (e.key === 'Enter') api.openMeeting(b.dataset.mid); });
